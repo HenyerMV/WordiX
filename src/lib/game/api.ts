@@ -1,6 +1,9 @@
 import { getSupabase } from "../supabase/client";
 import type { Game, Round } from "../types";
 
+/** Respuestas por categoría: { [category_id]: palabra }. */
+export type AnswerMap = Record<number, string>;
+
 // Igual que en rooms.ts: el navegador solo llama funciones SQL que validan las reglas.
 
 export async function startGame(roomId: string): Promise<Game> {
@@ -31,4 +34,21 @@ export async function fetchServerNow(): Promise<number> {
   const { data, error } = await getSupabase().rpc("server_now");
   if (error) throw error;
   return Date.parse(data as string);
+}
+
+export async function saveAnswers(roundId: string, answers: AnswerMap): Promise<void> {
+  const { error } = await getSupabase().rpc("save_answers", { p_round: roundId, p_answers: answers });
+  if (error) throw error;
+}
+
+export async function pressStop(roundId: string, answers: AnswerMap): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("press_stop", { p_round: roundId, p_answers: answers });
+  if (error) throw error;
+  return data as Round;
+}
+
+export async function finishAnswering(roundId: string): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("finish_answering", { p_round: roundId });
+  if (error) throw error;
+  return data as Round;
 }

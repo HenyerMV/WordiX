@@ -46,6 +46,8 @@ export interface Round {
   letter: string | null;
   status: RoundStatus;
   stopped_by: string | null;
+  /** Momento (reloj del servidor) en que alguien dio STOP; empieza la cuenta de 20 s. */
+  stopped_at: string | null;
   /** Reloj oficial: marca de tiempo del servidor en que empezó la fase actual. */
   phase_started_at: string;
   created_at: string;
@@ -56,4 +58,18 @@ export interface LetterVote {
   player_id: string;
   accept: boolean;
   voted_at: string;
+}
+
+/** Categoría de la partida, en orden (game_categories + nombre). */
+export interface GameCategory {
+  category_id: number;
+  position: number;
+  name: string;
+}
+
+/** Respuesta propia de la ronda actual. */
+export interface MyAnswer {
+  category_id: number;
+  answer: string | null;
+  status: "pending" | "accepted" | "rejected" | "in_review";
 }

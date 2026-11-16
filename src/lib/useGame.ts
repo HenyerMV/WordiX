@@ -4,7 +4,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchServerNow } from "./game/api";
 import { getSupabase } from "./supabase/client";
-import type { Game, LetterVote, Round } from "./types";
+import type { Game, GameCategory, LetterVote, MyAnswer, Round } from "./types";
 
 /**
  * Estado de la partida de una sala: partida actual, ronda actual, la ronda
@@ -12,11 +12,14 @@ import type { Game, LetterVote, Round } from "./types";
  * Se mantiene sincronizado con Realtime y con un refresco de respaldo cada 5 s.
  * "serverNow" es la hora del servidor (el reloj oficial de todas las fases).
  */
-export function useGame(roomId: string) {
+export function useGame(roomId: string, myId: string) {
   const [game, setGame] = useState<Game | null>(null);
   const [round, setRound] = useState<Round | null>(null);
   const [previousRound, setPreviousRound] = useState<Round | null>(null);
   const [votes, setVotes] = useState<LetterVote[]>([]);
+  const [categories, setCategories] = useState<GameCategory[]>([]);
+  const [myAnswers, setMyAnswers] = useState<MyAnswer[]>([]);
+  const categoriesRef = useRef<{ gameId: string; list: GameCategory[] } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [offset, setOffset] = useState(0);
   const [tick, setTick] = useState(() => Date.now());
@@ -39,6 +42,8 @@ export function useGame(roomId: string) {
         setRound(null);
         setPreviousRound(null);
         setVotes([]);
+        setCategories([]);
+        setMyAnswers([]);
         setLoaded(true);
         return;
       }
@@ -64,7 +69,40 @@ export function useGame(roomId: string) {
         nextVotes = (v ?? []) as LetterVote[];
       }
 
+      // Las categorías de una partida no cambian: se piden una sola vez.
+      if (categoriesRef.current?.gameId !== g.id) {
+        const { data: cats, error: catsError } = await supabase
+          .from("game_categories")
+          .select("category_id, position, categories(name)")
+          .eq("game_id", g.id)
+          .order("position");
+        if (catsError) throw catsError;
+        const list = ((cats ?? []) as unknown as {
+          category_id: number;
+          position: number;
+          categories: { name: string } | { name: string }[] | null;
+        }[]).map((row) => ({
+          category_id: row.category_id,
+          position: row.position,
+          name: (Array.isArray(row.categories) ? row.categories[0]?.name : row.categories?.name) ?? "",
+        }));
+        categoriesRef.current = { gameId: g.id, list };
+      }
+
+      let nextAnswers: MyAnswer[] = [];
+      if (current && (current.status === "answering" || current.status === "reviewing")) {
+        const { data: a, error: answersError } = await supabase
+          .from("game_answers")
+          .select("category_id, answer, status")
+          .eq("round_id", current.id)
+          .eq("player_id", myId);
+        if (answersError) throw answersError;
+        nextAnswers = (a ?? []) as MyAnswer[];
+      }
+
       if (!aliveRef.current) return;
+      setCategories(categoriesRef.current?.list ?? []);
+      setMyAnswers(nextAnswers);
       setGame(g as Game);
       setRound(current);
       setPreviousRound(previous);
@@ -73,7 +111,7 @@ export function useGame(roomId: string) {
     } catch (e) {
       console.error("[wordix] no se pudo actualizar la partida", e);
     }
-  }, [roomId]);
+  }, [roomId, myId]);
 
   const syncClock = useCallback(async () => {
     try {
@@ -125,5 +163,5 @@ export function useGame(roomId: string) {
     };
   }, [roomId, refresh, syncClock]);
 
-  return { game, round, previousRound, votes, loaded, offset, serverNow: tick + offset, refresh };
+  return { game, round, previousRound, votes, categories, myAnswers, loaded, offset, serverNow: tick + offset, refresh };
 }

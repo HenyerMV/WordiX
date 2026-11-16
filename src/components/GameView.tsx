@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnswerForm } from "@/components/AnswerForm";
 import { Wheel } from "@/components/Wheel";
 import { Spinner } from "@/components/Screen";
-import { resolveLetterVote, spinRound, voteLetter } from "@/lib/game/api";
-import { SPIN_ANIM_MS, SPIN_WAIT_MS, VOTE_TOTAL_MS } from "@/lib/game/rules";
+import { finishAnswering, resolveLetterVote, spinRound, voteLetter } from "@/lib/game/api";
+import { ANSWER_GRACE_MS, ANSWER_MAX_MS, SPIN_ANIM_MS, SPIN_WAIT_MS, STOP_WAIT_MS, VOTE_TOTAL_MS } from "@/lib/game/rules";
 import { friendlyError } from "@/lib/errors";
 import { seatStyle } from "@/lib/seatStyles";
 import type { Member, Room } from "@/lib/types";
@@ -20,7 +21,7 @@ interface GameViewProps {
 const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
 
 export function GameView({ room, members, myId, onExit }: GameViewProps) {
-  const { round, previousRound, votes, loaded, offset, serverNow, refresh } = useGame(room.id);
+  const { round, previousRound, votes, categories, myAnswers, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const lastResolve = useRef<{ id: string; at: number } | null>(null);
@@ -47,6 +48,23 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
     resolveLetterVote(round.id)
       .then(() => refresh())
       .catch((e) => console.error("[wordix] no se pudo cerrar la votación", e));
+  });
+
+  // Cierra la fase de escritura cuando venció la cuenta de 20 s (o el tope de la fase).
+  // Cualquier cliente puede hacerlo; el servidor decide y es idempotente.
+  useEffect(() => {
+    if (!round || round.status !== "answering") return;
+    const stoppedAt = round.stopped_at ? Date.parse(round.stopped_at) : null;
+    const over =
+      (stoppedAt !== null && serverNow >= stoppedAt + STOP_WAIT_MS + ANSWER_GRACE_MS + 600) ||
+      elapsed >= ANSWER_MAX_MS + ANSWER_GRACE_MS + 600;
+    if (!over) return;
+    const last = lastResolve.current;
+    if (last && last.id === round.id && Date.now() - last.at < 2000) return;
+    lastResolve.current = { id: round.id, at: Date.now() };
+    finishAnswering(round.id)
+      .then(() => refresh())
+      .catch((e) => console.error("[wordix] no se pudo cerrar la escritura", e));
   });
 
   async function run(action: () => Promise<unknown>) {
@@ -178,13 +196,25 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
         ) : null}
 
         {status === "answering" ? (
+          <AnswerForm
+            key={round.id}
+            round={round}
+            categories={categories}
+            savedAnswers={myAnswers}
+            serverNow={serverNow}
+            stopperName={round.stopped_by ? nameOf(round.stopped_by) : null}
+            iStopped={round.stopped_by === myId}
+            onChanged={() => void refresh()}
+          />
+        ) : null}
+
+        {status === "reviewing" ? (
           <div className="flex flex-col items-center gap-3">
-            <p className="text-mist">Letra aceptada</p>
-            <span className="inline-flex h-24 w-20 items-center justify-center rounded-2xl bg-volt font-display text-6xl font-bold text-ink-900 shadow-[0_5px_0_0_#7da80f] animate-pop-in">
-              {letter}
-            </span>
+            <p className="font-display text-xl font-bold">
+              {round.stopped_by ? `${nameOf(round.stopped_by)} dio STOP` : "Se acabó el tiempo"}
+            </p>
             <p className="max-w-sm text-mist">
-              ¡Se juega con la {letter}! Las categorías con los 20 segundos llegan en la siguiente etapa.
+              Tus respuestas quedaron guardadas. La revisión de palabras y los puntos llegan en las siguientes etapas.
             </p>
           </div>
         ) : null}
