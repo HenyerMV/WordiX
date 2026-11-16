@@ -58,7 +58,7 @@ npm test                     # pruebas de las reglas de texto
 ## Pruebas
 
 - `npm test`: reglas de texto (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
-- `supabase/tests/`: 20 pruebas de reglas y seguridad (salas, asientos, jugador mano, votos, RLS, Realtime). Se ejecutan sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones, el seed y `reglas_y_seguridad.sql`.
+- `supabase/tests/`: 35 pruebas de la base de datos. `reglas_y_seguridad.sql` (20: salas, asientos, jugador mano, votos, RLS, Realtime) y `partida_y_respuestas.sql` (15: empezar partida, ruleta, votación de la letra con desempate, letra rechazada, STOP y revisión). Se ejecutan, cada una en una base limpia, sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones 1 a 4, el seed y el archivo de pruebas.
 
 ## Decisiones de diseño
 
