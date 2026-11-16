@@ -1,209 +1,246 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { ConnectionBadge } from "@/components/ConnectionBadge";
+import { CopyButton } from "@/components/CopyButton";
 import { Logo } from "@/components/Logo";
 import { NameForm } from "@/components/NameForm";
+import { GameView } from "@/components/GameView";
+import { PlayerSlot } from "@/components/PlayerSlot";
 import { usePlayer } from "@/components/PlayerProvider";
 import { Screen, Spinner } from "@/components/Screen";
 import { friendlyError } from "@/lib/errors";
-import { ROOM_CODE_LENGTH, isValidRoomCode, sanitizeCode } from "@/lib/game/text";
-import { createRoom, joinRoom } from "@/lib/rooms";
+import { startGame } from "@/lib/game/api";
+import { isValidRoomCode } from "@/lib/game/text";
+import { useRoom } from "@/lib/useRoom";
 
-const STEPS = [
-  {
-    title: "Gira la ruleta",
-    text: "Sale una letra y todos votan si se juega con ella. Si hay empate, decide el jugador mano.",
-  },
-  {
-    title: "Escribe en 20 segundos",
-    text: "Una categoría a la vez, en minúsculas y sin números ni símbolos.",
-  },
-  {
-    title: "Valida y suma",
-    text: "Las palabras dudosas las votan los demás. Quien termine primero pulsa STOP.",
-  },
-] as const;
+function MessageCard({ message, actionLabel, onAction }: {
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <section className="card flex flex-col items-center gap-4 text-center">
+      <p role="alert">{message}</p>
+      <button type="button" className="btn-primary" onClick={onAction}>
+        {actionLabel}
+      </button>
+    </section>
+  );
+}
 
-export default function HomePage() {
+export default function RoomPage() {
   const router = useRouter();
-  const { status, player, error, saveName, retry } = usePlayer();
-  const [editingName, setEditingName] = useState(false);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState<"create" | "join" | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const params = useParams<{ codigo: string }>();
+  const code = params.codigo;
+  const validCode = isValidRoomCode(code);
 
-  async function handleCreate() {
-    if (busy) return;
-    setBusy("create");
-    setActionError(null);
+  const { status, player, error: playerError, saveName, retry } = usePlayer();
+  const myId = validCode && status === "ready" && player ? player.id : null;
+  const { phase, error, room, members, onlineIds, connection, leave } = useRoom(code, myId);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  async function handleLeave() {
+    if (leaving) return;
+    setLeaving(true);
+    setLeaveError(null);
     try {
-      const room = await createRoom();
-      router.push(`/sala/${room.code}`);
+      await leave();
+      router.push("/");
     } catch (e) {
-      console.error("[wordix] no se pudo crear la sala", e);
-      setActionError(friendlyError(e));
-      setBusy(null);
+      console.error("[wordix] no se pudo salir de la sala", e);
+      setLeaveError(friendlyError(e));
+      setLeaving(false);
     }
   }
 
-  async function handleJoin(event: FormEvent) {
-    event.preventDefault();
-    if (busy || !isValidRoomCode(code)) return;
-    setBusy("join");
-    setActionError(null);
+  const goHome = () => router.push("/");
+
+  if (!validCode) {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <MessageCard message="Ese código de sala no es válido. Debe tener 6 números." actionLabel="Volver al inicio" onAction={goHome} />
+      </Screen>
+    );
+  }
+
+  if (status === "loading") {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <Spinner label="Conectando…" />
+      </Screen>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <MessageCard message={playerError ?? "No pudimos conectarnos."} actionLabel="Reintentar" onAction={retry} />
+      </Screen>
+    );
+  }
+
+  if (status === "needs_name") {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <NameForm
+          title={`Entrar a la sala ${code}`}
+          description="Antes de entrar, escribe tu nombre de jugador."
+          submitLabel="Entrar a la sala"
+          onSubmit={saveName}
+        />
+      </Screen>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <MessageCard message={error ?? "No pudimos entrar a la sala."} actionLabel="Volver al inicio" onAction={goHome} />
+      </Screen>
+    );
+  }
+
+  if (phase === "joining" || !room) {
+    return (
+      <Screen>
+        <Logo size="sm" />
+        <Spinner label={`Entrando a la sala ${code}…`} />
+      </Screen>
+    );
+  }
+
+  if (room.status !== "waiting" && myId) {
+    return (
+      <Screen wide>
+        <GameView room={room} members={members} myId={myId} onExit={goHome} />
+      </Screen>
+    );
+  }
+
+  const isHost = room.host_id === myId;
+  const canStart = members.length >= 2;
+  const hostName = members.find((m) => m.playerId === room.host_id)?.username ?? "el anfitrión";
+
+  async function handleStart() {
+    if (starting || !room) return;
+    setStarting(true);
+    setStartError(null);
     try {
-      const room = await joinRoom(code);
-      router.push(`/sala/${room.code}`);
+      await startGame(room.id);
     } catch (e) {
-      console.error("[wordix] no se pudo entrar a la sala", e);
-      setActionError(friendlyError(e));
-      setBusy(null);
+      console.error("[wordix] no se pudo empezar la partida", e);
+      setStartError(friendlyError(e));
+    } finally {
+      setStarting(false);
     }
   }
+
+  const slots = Array.from({ length: room.max_players }, (_, index) => index + 1);
+  const memberBySeat = new Map(members.map((member) => [member.seat, member]));
 
   return (
-    <Screen wide>
-      <header className="flex flex-col items-center gap-4 pt-2 text-center sm:pt-6">
-        <Logo />
-        <p className="max-w-md text-balance text-lg text-mist">
-          Gira la ruleta, llena las categorías antes que los demás y gana la ronda.
-        </p>
+    <Screen>
+      <header className="flex items-center justify-between gap-3">
+        <Link href="/" aria-label="WordiX, volver al inicio" onClick={(e) => { e.preventDefault(); void handleLeave(); }}>
+          <Logo size="sm" />
+        </Link>
+        <ConnectionBadge connection={connection} />
       </header>
 
-      {status === "loading" ? <Spinner label="Conectando…" /> : null}
-
-      {status === "error" ? (
-        <section className="card mx-auto flex w-full max-w-xl flex-col items-center gap-4 text-center">
-          <p role="alert">{error}</p>
-          <button type="button" className="btn-primary" onClick={retry}>
-            Reintentar
-          </button>
-        </section>
-      ) : null}
-
-      {status === "needs_name" ? (
-        <div className="mx-auto w-full max-w-xl">
-          <NameForm
-            title="¿Cómo te llamas?"
-            description="Será tu nombre en la sala. Puedes cambiarlo cuando quieras."
-            submitLabel="Entrar a WordiX"
-            onSubmit={saveName}
-          />
-        </div>
-      ) : null}
-
-      {status === "ready" && player && editingName ? (
-        <div className="mx-auto w-full max-w-xl">
-          <NameForm
-            title="Cambiar nombre"
-            initialValue={player.username}
-            submitLabel="Guardar nombre"
-            onSubmit={async (name) => {
-              const message = await saveName(name);
-              if (!message) setEditingName(false);
-              return message;
-            }}
-            onCancel={() => setEditingName(false)}
-          />
-        </div>
-      ) : null}
-
-      {status === "ready" && player && !editingName ? (
-        <>
-          <section className="flex items-center justify-between gap-3 rounded-2xl border border-ink-600 bg-ink-800/70 px-4 py-3">
-            <p>
-              Jugando como{" "}
-              <strong className="font-display text-lg font-bold text-volt">{player.username}</strong>
-            </p>
-            <button
-              type="button"
-              className="btn-ghost !px-3 !py-1.5 text-sm"
-              onClick={() => setEditingName(true)}
+      <section className="card text-center">
+        <p className="text-sm uppercase tracking-widest text-mist">Código de la sala</p>
+        <div className="mt-3 flex justify-center gap-1.5 sm:gap-2" aria-label={`Código ${code.split("").join(" ")}`}>
+          {code.split("").map((digit, index) => (
+            <span
+              key={index}
+              aria-hidden="true"
+              style={{ animationDelay: `${index * 60}ms` }}
+              className="inline-flex h-12 w-10 items-center justify-center rounded-xl bg-paper font-display text-3xl font-bold text-ink-900 shadow-[0_4px_0_0_rgba(0,0,0,0.35)] animate-pop-in sm:h-16 sm:w-14 sm:text-4xl"
             >
-              Cambiar nombre
+              {digit}
+            </span>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <CopyButton label="Copiar código" getText={() => code} />
+          <CopyButton label="Copiar enlace" getText={() => `${window.location.origin}/sala/${code}`} />
+        </div>
+      </section>
+
+      <section className="card" aria-labelledby="jugadores">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 id="jugadores" className="font-display text-xl font-bold">
+            Jugadores
+          </h2>
+          <p className="text-mist" aria-live="polite">
+            {members.length} de {room.max_players}
+          </p>
+        </div>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {slots.map((seat) => {
+            const member = memberBySeat.get(seat);
+            const isMe = member?.playerId === myId;
+            return (
+              <PlayerSlot
+                key={seat}
+                seat={seat}
+                member={member}
+                isMe={isMe}
+                isHost={member?.playerId === room.host_id}
+                online={member ? (isMe ? connection !== "offline" : onlineIds.has(member.playerId)) : false}
+              />
+            );
+          })}
+        </ul>
+        <p className="mt-4 text-sm text-mist">
+          {members.length < 2
+            ? "Se necesitan al menos 2 jugadores. Comparte el código para que se unan."
+            : "Pueden jugar de 2 a 4 personas."}
+        </p>
+      </section>
+
+      <section className="card flex flex-col items-center gap-3 text-center">
+        {isHost ? (
+          <>
+            <button type="button" className="btn-primary text-xl" onClick={handleStart} disabled={!canStart || starting}>
+              {starting ? "Empezando…" : "Empezar partida"}
             </button>
-          </section>
+            {!canStart ? <p className="text-sm text-mist">Se activa cuando haya 2 o más jugadores.</p> : null}
+          </>
+        ) : (
+          <p className="text-mist" aria-live="polite">
+            Esperando a que {hostName} empiece la partida…
+          </p>
+        )}
+        {startError ? (
+          <p role="alert" className="text-bubble">
+            {startError}
+          </p>
+        ) : null}
+      </section>
 
-          {actionError ? (
-            <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
-              {actionError}
-            </p>
-          ) : null}
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <section className="card flex flex-col gap-4">
-              <div>
-                <h2 className="font-display text-2xl font-bold">Crear sala</h2>
-                <p className="mt-1 text-mist">
-                  Serás el anfitrión y el primer jugador mano. Comparte el código con tus amigos.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-primary mt-auto"
-                onClick={handleCreate}
-                disabled={busy !== null}
-              >
-                {busy === "create" ? "Creando sala…" : "Crear sala"}
-              </button>
-            </section>
-
-            <form className="card flex flex-col gap-4" onSubmit={handleJoin}>
-              <div>
-                <h2 className="font-display text-2xl font-bold">Unirme a una sala</h2>
-                <p className="mt-1 text-mist">Escribe el código de {ROOM_CODE_LENGTH} números.</p>
-              </div>
-              <div>
-                <label htmlFor="room-code" className="sr-only">
-                  Código de la sala
-                </label>
-                <input
-                  id="room-code"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoComplete="off"
-                  value={code}
-                  onChange={(e) => setCode(sanitizeCode(e.target.value))}
-                  placeholder="000000"
-                  maxLength={ROOM_CODE_LENGTH}
-                  className="field text-center font-display text-3xl font-bold tracking-[0.35em]"
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn-primary mt-auto"
-                disabled={busy !== null || !isValidRoomCode(code)}
-              >
-                {busy === "join" ? "Entrando…" : "Unirme"}
-              </button>
-            </form>
-          </div>
-
-          <section aria-labelledby="como-se-juega" className="pt-2">
-            <h2 id="como-se-juega" className="mb-4 font-display text-xl font-bold">
-              Cómo se juega
-            </h2>
-            <ol className="grid gap-4 sm:grid-cols-3">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="flex gap-3 rounded-2xl border border-ink-600 p-4">
-                  <span
-                    aria-hidden="true"
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper font-display font-bold text-ink-900"
-                  >
-                    {index + 1}
-                  </span>
-                  <div>
-                    <h3 className="font-display font-bold">{step.title}</h3>
-                    <p className="mt-1 text-sm text-mist">{step.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </>
+      {leaveError ? (
+        <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
+          {leaveError}
+        </p>
       ) : null}
+
+      <footer className="flex justify-center">
+        <button type="button" className="btn-ghost" onClick={handleLeave} disabled={leaving}>
+          {leaving ? "Saliendo…" : "Salir de la sala"}
+        </button>
+      </footer>
     </Screen>
   );
 }

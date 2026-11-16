@@ -8,6 +8,15 @@ const MESSAGES: Record<string, string> = {
   ROOM_NOT_FOUND: "No existe una sala con ese código.",
   ROOM_FULL: "La sala está llena (máximo 4 jugadores).",
   ROOM_STARTED: "La partida de esa sala ya comenzó.",
+  NOT_HOST: "Solo el anfitrión puede empezar la partida.",
+  NOT_ENOUGH_PLAYERS: "Se necesitan al menos 2 jugadores para empezar.",
+  NO_CATEGORIES: "No hay categorías activas para jugar.",
+  ROUND_NOT_FOUND: "No encontramos la ronda. Recarga la página.",
+  NOT_MEMBER: "No eres parte de esta sala.",
+  WRONG_PHASE: "Esa acción ya no está disponible en esta fase.",
+  ONLY_HAND_CAN_SPIN: "Todavía solo el jugador mano puede girar la ruleta.",
+  VOTE_NOT_READY: "La votación todavía no termina.",
+  INVALID_VOTE: "Voto no válido.",
   CODE_GENERATION_FAILED: "No pudimos crear el código de la sala. Inténtalo otra vez.",
 };
 

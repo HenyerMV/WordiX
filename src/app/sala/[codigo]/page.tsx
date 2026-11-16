@@ -7,10 +7,12 @@ import { ConnectionBadge } from "@/components/ConnectionBadge";
 import { CopyButton } from "@/components/CopyButton";
 import { Logo } from "@/components/Logo";
 import { NameForm } from "@/components/NameForm";
+import { GameView } from "@/components/GameView";
 import { PlayerSlot } from "@/components/PlayerSlot";
 import { usePlayer } from "@/components/PlayerProvider";
 import { Screen, Spinner } from "@/components/Screen";
 import { friendlyError } from "@/lib/errors";
+import { startGame } from "@/lib/game/api";
 import { isValidRoomCode } from "@/lib/game/text";
 import { useRoom } from "@/lib/useRoom";
 
@@ -40,6 +42,8 @@ export default function RoomPage() {
   const { phase, error, room, members, onlineIds, connection, leave } = useRoom(code, myId);
   const [leaving, setLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   async function handleLeave() {
     if (leaving) return;
@@ -116,6 +120,32 @@ export default function RoomPage() {
     );
   }
 
+  if (room.status !== "waiting" && myId) {
+    return (
+      <Screen wide>
+        <GameView room={room} members={members} myId={myId} onExit={goHome} />
+      </Screen>
+    );
+  }
+
+  const isHost = room.host_id === myId;
+  const canStart = members.length >= 2;
+  const hostName = members.find((m) => m.playerId === room.host_id)?.username ?? "el anfitrión";
+
+  async function handleStart() {
+    if (starting || !room) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      await startGame(room.id);
+    } catch (e) {
+      console.error("[wordix] no se pudo empezar la partida", e);
+      setStartError(friendlyError(e));
+    } finally {
+      setStarting(false);
+    }
+  }
+
   const slots = Array.from({ length: room.max_players }, (_, index) => index + 1);
   const memberBySeat = new Map(members.map((member) => [member.seat, member]));
 
@@ -178,6 +208,26 @@ export default function RoomPage() {
             ? "Se necesitan al menos 2 jugadores. Comparte el código para que se unan."
             : "Pueden jugar de 2 a 4 personas."}
         </p>
+      </section>
+
+      <section className="card flex flex-col items-center gap-3 text-center">
+        {isHost ? (
+          <>
+            <button type="button" className="btn-primary text-xl" onClick={handleStart} disabled={!canStart || starting}>
+              {starting ? "Empezando…" : "Empezar partida"}
+            </button>
+            {!canStart ? <p className="text-sm text-mist">Se activa cuando haya 2 o más jugadores.</p> : null}
+          </>
+        ) : (
+          <p className="text-mist" aria-live="polite">
+            Esperando a que {hostName} empiece la partida…
+          </p>
+        )}
+        {startError ? (
+          <p role="alert" className="text-bubble">
+            {startError}
+          </p>
+        ) : null}
       </section>
 
       {leaveError ? (

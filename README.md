@@ -12,7 +12,7 @@ Juego multijugador de categorías y palabras (estilo Stop) para 2 a 4 jugadores.
 | 2. Base de datos (esquema, RLS, diccionario inicial) | Hecha y probada |
 | 3. Salas: nombre, crear, unirse por código de 6 números | Hecha |
 | 4. Sincronización en tiempo real y reconexión de la sala de espera | Hecha |
-| 5. Ruleta y jugador mano | Pendiente |
+| 5. Empezar partida, ruleta, votación de la letra y jugador mano | Hecha (falta probarla en línea) |
 | 6. Categorías, 20 s, STOP, repetición de pendientes | Pendiente |
 | 7. Validación (diccionario, Wikidata, Wikcionario) | Pendiente |
 | 8. Votación de palabras y aprendizaje | Pendiente |
@@ -29,7 +29,8 @@ Las tablas de rondas, respuestas, votos y resultados ya existen con sus reglas, 
 3. En el **SQL Editor** ejecuta, en este orden:
    1. `supabase/migrations/20261115000001_diccionario.sql`
    2. `supabase/migrations/20261115000002_juego.sql`
-   3. `supabase/seed.sql`
+   3. `supabase/migrations/20261116000003_partida.sql`
+   4. `supabase/seed.sql`
 4. En **Project Settings > API** copia la URL y la clave pública (anon/publishable).
 
 ### 2. Local
