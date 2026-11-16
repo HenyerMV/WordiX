@@ -1,0 +1,209 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { Logo } from "@/components/Logo";
+import { NameForm } from "@/components/NameForm";
+import { usePlayer } from "@/components/PlayerProvider";
+import { Screen, Spinner } from "@/components/Screen";
+import { friendlyError } from "@/lib/errors";
+import { ROOM_CODE_LENGTH, isValidRoomCode, sanitizeCode } from "@/lib/game/text";
+import { createRoom, joinRoom } from "@/lib/rooms";
+
+const STEPS = [
+  {
+    title: "Gira la ruleta",
+    text: "Sale una letra y todos votan si se juega con ella. Si hay empate, decide el jugador mano.",
+  },
+  {
+    title: "Escribe en 20 segundos",
+    text: "Una categoría a la vez, en minúsculas y sin números ni símbolos.",
+  },
+  {
+    title: "Valida y suma",
+    text: "Las palabras dudosas las votan los demás. Quien termine primero pulsa STOP.",
+  },
+] as const;
+
+export default function HomePage() {
+  const router = useRouter();
+  const { status, player, error, saveName, retry } = usePlayer();
+  const [editingName, setEditingName] = useState(false);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function handleCreate() {
+    if (busy) return;
+    setBusy("create");
+    setActionError(null);
+    try {
+      const room = await createRoom();
+      router.push(`/sala/${room.code}`);
+    } catch (e) {
+      console.error("[wordix] no se pudo crear la sala", e);
+      setActionError(friendlyError(e));
+      setBusy(null);
+    }
+  }
+
+  async function handleJoin(event: FormEvent) {
+    event.preventDefault();
+    if (busy || !isValidRoomCode(code)) return;
+    setBusy("join");
+    setActionError(null);
+    try {
+      const room = await joinRoom(code);
+      router.push(`/sala/${room.code}`);
+    } catch (e) {
+      console.error("[wordix] no se pudo entrar a la sala", e);
+      setActionError(friendlyError(e));
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Screen wide>
+      <header className="flex flex-col items-center gap-4 pt-2 text-center sm:pt-6">
+        <Logo />
+        <p className="max-w-md text-balance text-lg text-mist">
+          Gira la ruleta, llena las categorías antes que los demás y gana la ronda.
+        </p>
+      </header>
+
+      {status === "loading" ? <Spinner label="Conectando…" /> : null}
+
+      {status === "error" ? (
+        <section className="card mx-auto flex w-full max-w-xl flex-col items-center gap-4 text-center">
+          <p role="alert">{error}</p>
+          <button type="button" className="btn-primary" onClick={retry}>
+            Reintentar
+          </button>
+        </section>
+      ) : null}
+
+      {status === "needs_name" ? (
+        <div className="mx-auto w-full max-w-xl">
+          <NameForm
+            title="¿Cómo te llamas?"
+            description="Será tu nombre en la sala. Puedes cambiarlo cuando quieras."
+            submitLabel="Entrar a WordiX"
+            onSubmit={saveName}
+          />
+        </div>
+      ) : null}
+
+      {status === "ready" && player && editingName ? (
+        <div className="mx-auto w-full max-w-xl">
+          <NameForm
+            title="Cambiar nombre"
+            initialValue={player.username}
+            submitLabel="Guardar nombre"
+            onSubmit={async (name) => {
+              const message = await saveName(name);
+              if (!message) setEditingName(false);
+              return message;
+            }}
+            onCancel={() => setEditingName(false)}
+          />
+        </div>
+      ) : null}
+
+      {status === "ready" && player && !editingName ? (
+        <>
+          <section className="flex items-center justify-between gap-3 rounded-2xl border border-ink-600 bg-ink-800/70 px-4 py-3">
+            <p>
+              Jugando como{" "}
+              <strong className="font-display text-lg font-bold text-volt">{player.username}</strong>
+            </p>
+            <button
+              type="button"
+              className="btn-ghost !px-3 !py-1.5 text-sm"
+              onClick={() => setEditingName(true)}
+            >
+              Cambiar nombre
+            </button>
+          </section>
+
+          {actionError ? (
+            <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
+              {actionError}
+            </p>
+          ) : null}
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <section className="card flex flex-col gap-4">
+              <div>
+                <h2 className="font-display text-2xl font-bold">Crear sala</h2>
+                <p className="mt-1 text-mist">
+                  Serás el anfitrión y el primer jugador mano. Comparte el código con tus amigos.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-primary mt-auto"
+                onClick={handleCreate}
+                disabled={busy !== null}
+              >
+                {busy === "create" ? "Creando sala…" : "Crear sala"}
+              </button>
+            </section>
+
+            <form className="card flex flex-col gap-4" onSubmit={handleJoin}>
+              <div>
+                <h2 className="font-display text-2xl font-bold">Unirme a una sala</h2>
+                <p className="mt-1 text-mist">Escribe el código de {ROOM_CODE_LENGTH} números.</p>
+              </div>
+              <div>
+                <label htmlFor="room-code" className="sr-only">
+                  Código de la sala
+                </label>
+                <input
+                  id="room-code"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  value={code}
+                  onChange={(e) => setCode(sanitizeCode(e.target.value))}
+                  placeholder="000000"
+                  maxLength={ROOM_CODE_LENGTH}
+                  className="field text-center font-display text-3xl font-bold tracking-[0.35em]"
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-primary mt-auto"
+                disabled={busy !== null || !isValidRoomCode(code)}
+              >
+                {busy === "join" ? "Entrando…" : "Unirme"}
+              </button>
+            </form>
+          </div>
+
+          <section aria-labelledby="como-se-juega" className="pt-2">
+            <h2 id="como-se-juega" className="mb-4 font-display text-xl font-bold">
+              Cómo se juega
+            </h2>
+            <ol className="grid gap-4 sm:grid-cols-3">
+              {STEPS.map((step, index) => (
+                <li key={step.title} className="flex gap-3 rounded-2xl border border-ink-600 p-4">
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper font-display font-bold text-ink-900"
+                  >
+                    {index + 1}
+                  </span>
+                  <div>
+                    <h3 className="font-display font-bold">{step.title}</h3>
+                    <p className="mt-1 text-sm text-mist">{step.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </>
+      ) : null}
+    </Screen>
+  );
+}
