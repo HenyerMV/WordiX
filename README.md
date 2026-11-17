@@ -13,7 +13,7 @@ Juego multijugador de categorías y palabras (estilo Stop) para 2 a 4 jugadores.
 | 3. Salas: nombre, crear, unirse por código de 6 números | Hecha |
 | 4. Sincronización en tiempo real y reconexión de la sala de espera | Hecha |
 | 5. Empezar partida, ruleta, votación de la letra y jugador mano | Hecha (falta probarla en línea) |
-| 6. Categorías, escritura, STOP y cuenta de 20 s | Hecha (falta probarla en línea) |
+| 6. Categorías una a una (20 s), saltar, pendientes, STOP y terminar ronda | Hecha (falta probarla en línea) |
 | 7. Validación (diccionario, Wikidata, Wikcionario) | Pendiente |
 | 8. Votación de palabras y aprendizaje | Pendiente |
 | 9. Puntuación y resultados | Pendiente |
@@ -58,7 +58,7 @@ npm test                     # pruebas de las reglas de texto
 ## Pruebas
 
 - `npm test`: reglas de texto (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
-- `supabase/tests/`: 35 pruebas de la base de datos. `reglas_y_seguridad.sql` (20: salas, asientos, jugador mano, votos, RLS, Realtime) y `partida_y_respuestas.sql` (15: empezar partida, ruleta, votación de la letra con desempate, letra rechazada, STOP y revisión). Se ejecutan, cada una en una base limpia, sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones 1 a 4, el seed y el archivo de pruebas.
+- `supabase/tests/`: 20 pruebas de reglas y seguridad (salas, asientos, jugador mano, votos, RLS, Realtime). Se ejecutan sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones, el seed y `reglas_y_seguridad.sql`.
 
 ## Decisiones de diseño
 

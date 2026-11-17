@@ -46,8 +46,6 @@ export interface Round {
   letter: string | null;
   status: RoundStatus;
   stopped_by: string | null;
-  /** Momento (reloj del servidor) en que alguien dio STOP; empieza la cuenta de 20 s. */
-  stopped_at: string | null;
   /** Reloj oficial: marca de tiempo del servidor en que empezó la fase actual. */
   phase_started_at: string;
   created_at: string;
@@ -65,6 +63,24 @@ export interface GameCategory {
   category_id: number;
   position: number;
   name: string;
+}
+
+/** Avance de un jugador en la fase de respuestas (una categoría a la vez). */
+export interface AnswerProgress {
+  round_id: string;
+  player_id: string;
+  /** Categoría que tiene abierta; null cuando ya completó todas. */
+  category_id: number | null;
+  /** Reloj oficial: momento del servidor en que se abrió esa categoría. */
+  opened_at: string;
+  /** 1 = primera vuelta; 2 o más = repetición de pendientes. */
+  pass: number;
+  finished: boolean;
+}
+
+export interface EndVote {
+  round_id: string;
+  player_id: string;
 }
 
 /** Respuesta propia de la ronda actual. */

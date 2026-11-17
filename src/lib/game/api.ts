@@ -1,8 +1,5 @@
 import { getSupabase } from "../supabase/client";
-import type { Game, Round } from "../types";
-
-/** Respuestas por categoría: { [category_id]: palabra }. */
-export type AnswerMap = Record<number, string>;
+import type { AnswerProgress, Game, Round } from "../types";
 
 // Igual que en rooms.ts: el navegador solo llama funciones SQL que validan las reglas.
 
@@ -36,19 +33,42 @@ export async function fetchServerNow(): Promise<number> {
   return Date.parse(data as string);
 }
 
-export async function saveAnswers(roundId: string, answers: AnswerMap): Promise<void> {
-  const { error } = await getSupabase().rpc("save_answers", { p_round: roundId, p_answers: answers });
+export async function startMyTurn(roundId: string): Promise<AnswerProgress> {
+  const { data, error } = await getSupabase().rpc("start_my_turn", { p_round: roundId });
   if (error) throw error;
+  return data as AnswerProgress;
 }
 
-export async function pressStop(roundId: string, answers: AnswerMap): Promise<Round> {
-  const { data, error } = await getSupabase().rpc("press_stop", { p_round: roundId, p_answers: answers });
+export async function submitAnswer(roundId: string, categoryId: number, answer: string): Promise<AnswerProgress> {
+  const { data, error } = await getSupabase().rpc("submit_answer", {
+    p_round: roundId,
+    p_category: categoryId,
+    p_answer: answer,
+  });
+  if (error) throw error;
+  return data as AnswerProgress;
+}
+
+export async function skipCategory(roundId: string, categoryId: number): Promise<AnswerProgress> {
+  const { data, error } = await getSupabase().rpc("skip_category", { p_round: roundId, p_category: categoryId });
+  if (error) throw error;
+  return data as AnswerProgress;
+}
+
+export async function expireCategory(roundId: string, categoryId: number): Promise<AnswerProgress> {
+  const { data, error } = await getSupabase().rpc("expire_category", { p_round: roundId, p_category: categoryId });
+  if (error) throw error;
+  return data as AnswerProgress;
+}
+
+export async function pressStop(roundId: string): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("press_stop", { p_round: roundId });
   if (error) throw error;
   return data as Round;
 }
 
-export async function finishAnswering(roundId: string): Promise<Round> {
-  const { data, error } = await getSupabase().rpc("finish_answering", { p_round: roundId });
+export async function voteEndRound(roundId: string, want: boolean): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("vote_end_round", { p_round: roundId, p_want: want });
   if (error) throw error;
   return data as Round;
 }

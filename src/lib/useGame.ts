@@ -4,7 +4,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchServerNow } from "./game/api";
 import { getSupabase } from "./supabase/client";
-import type { Game, GameCategory, LetterVote, MyAnswer, Round } from "./types";
+import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round } from "./types";
 
 /**
  * Estado de la partida de una sala: partida actual, ronda actual, la ronda
@@ -19,6 +19,8 @@ export function useGame(roomId: string, myId: string) {
   const [votes, setVotes] = useState<LetterVote[]>([]);
   const [categories, setCategories] = useState<GameCategory[]>([]);
   const [myAnswers, setMyAnswers] = useState<MyAnswer[]>([]);
+  const [progress, setProgress] = useState<AnswerProgress[]>([]);
+  const [endVotes, setEndVotes] = useState<EndVote[]>([]);
   const categoriesRef = useRef<{ gameId: string; list: GameCategory[] } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -44,6 +46,8 @@ export function useGame(roomId: string, myId: string) {
         setVotes([]);
         setCategories([]);
         setMyAnswers([]);
+        setProgress([]);
+        setEndVotes([]);
         setLoaded(true);
         return;
       }
@@ -100,7 +104,27 @@ export function useGame(roomId: string, myId: string) {
         nextAnswers = (a ?? []) as MyAnswer[];
       }
 
+      let nextProgress: AnswerProgress[] = [];
+      let nextEndVotes: EndVote[] = [];
+      if (current && current.status === "answering") {
+        const { data: pr, error: progressError } = await supabase
+          .from("answer_progress")
+          .select("*")
+          .eq("round_id", current.id);
+        if (progressError) throw progressError;
+        nextProgress = (pr ?? []) as AnswerProgress[];
+
+        const { data: ev, error: endError } = await supabase
+          .from("round_end_votes")
+          .select("*")
+          .eq("round_id", current.id);
+        if (endError) throw endError;
+        nextEndVotes = (ev ?? []) as EndVote[];
+      }
+
       if (!aliveRef.current) return;
+      setProgress(nextProgress);
+      setEndVotes(nextEndVotes);
       setCategories(categoriesRef.current?.list ?? []);
       setMyAnswers(nextAnswers);
       setGame(g as Game);
@@ -137,6 +161,8 @@ export function useGame(roomId: string, myId: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "games", filter: `room_id=eq.${roomId}` }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "rounds" }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "letter_votes" }, () => void refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "answer_progress" }, () => void refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "round_end_votes" }, () => void refresh())
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void refresh();
       });
@@ -163,5 +189,5 @@ export function useGame(roomId: string, myId: string) {
     };
   }, [roomId, refresh, syncClock]);
 
-  return { game, round, previousRound, votes, categories, myAnswers, loaded, offset, serverNow: tick + offset, refresh };
+  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, loaded, offset, serverNow: tick + offset, refresh };
 }

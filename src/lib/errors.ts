@@ -17,10 +17,12 @@ const MESSAGES: Record<string, string> = {
   ONLY_HAND_CAN_SPIN: "Todavía solo el jugador mano puede girar la ruleta.",
   VOTE_NOT_READY: "La votación todavía no termina.",
   INVALID_VOTE: "Voto no válido.",
-  ANSWERS_CLOSED: "Se acabó el tiempo para escribir.",
-  ALREADY_STOPPED: "Otro jugador dio STOP primero.",
-  INCOMPLETE_ANSWERS: "Completa todas las categorías con la letra de la ronda antes de dar STOP.",
-  ANSWERING_NOT_OVER: "Todavía queda tiempo para escribir.",
+  TIME_UP: "Se acabó el tiempo de esa categoría.",
+  TIME_NOT_UP: "Todavía queda tiempo en esa categoría.",
+  NOT_CURRENT_CATEGORY: "Esa categoría ya no es la actual.",
+  INVALID_ANSWER: "Escribe una palabra con solo letras minúsculas.",
+  WRONG_LETTER: "La palabra debe empezar con la letra de la ronda.",
+  INCOMPLETE_ANSWERS: "Para dar STOP debes completar todas las categorías.",
   CODE_GENERATION_FAILED: "No pudimos crear el código de la sala. Inténtalo otra vez.",
 };
 
