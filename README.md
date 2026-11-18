@@ -49,6 +49,10 @@ npm test                     # pruebas de las reglas de texto
 3. En **Environment Variables** agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`, y también `SUPABASE_SERVICE_ROLE_KEY` (clave *service_role* de Supabase: Project Settings > API; solo para el servidor).
 4. Despliega. Cada `git push` a `main` publica una versión nueva.
 
+## Mantener Supabase despierto
+
+El plan gratuito de Supabase pausa el proyecto tras 7 días sin actividad. `vercel.json` programa un Vercel Cron que llama una vez al día a `/api/keepalive`, que hace una consulta mínima. Si el proyecto llegara a pausarse, se reactiva desde el panel de Supabase (**Restore project**).
+
 ## Seguridad
 
 - El navegador **nunca escribe directo** en las tablas. Solo lee lo de su sala (RLS) y llama a funciones SQL que validan las reglas (`create_room`, `join_room`, `leave_room`, `ensure_player`).
@@ -79,6 +83,7 @@ src/components/     interfaz reutilizable
 src/lib/game/       reglas de texto (con pruebas)
 src/lib/validation/ fuentes externas de validación (con pruebas)
 src/app/api/validar ruta del servidor que valida las respuestas
+src/app/api/keepalive ruta que Vercel Cron llama cada día para mantener activo Supabase
 src/lib/            Supabase, salas, tiempo real, errores
 supabase/migrations esquema, RLS y funciones
 supabase/seed.sql   diccionario inicial (14 categorías)
