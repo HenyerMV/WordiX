@@ -14,7 +14,7 @@ Juego multijugador de categorías y palabras (estilo Stop) para 2 a 4 jugadores.
 | 4. Sincronización en tiempo real y reconexión de la sala de espera | Hecha |
 | 5. Empezar partida, ruleta, votación de la letra y jugador mano | Hecha (falta probarla en línea) |
 | 6. Categorías una a una (20 s), saltar, pendientes, STOP y terminar ronda | Hecha (falta probarla en línea) |
-| 7. Validación (diccionario, Wikidata, Wikcionario) | Pendiente |
+| 7. Validación automática (diccionario, Wikidata, Wikcionario) | Hecha (falta probarla en línea) |
 | 8. Votación de palabras y aprendizaje | Pendiente |
 | 9. Puntuación y resultados | Pendiente |
 | 10. Pruebas integrales y lanzamiento | Pendiente |
@@ -31,7 +31,8 @@ Las tablas de rondas, respuestas, votos y resultados ya existen con sus reglas, 
    2. `supabase/migrations/20261115000002_juego.sql`
    3. `supabase/migrations/20261116000003_partida.sql`
    4. `supabase/migrations/20261116000004_respuestas.sql`
-   5. `supabase/seed.sql`
+   5. `supabase/migrations/20261116000005_validacion.sql`
+   6. `supabase/seed.sql`
 4. En **Project Settings > API** copia la URL y la clave pública (anon/publishable).
 
 ### 2. Local
@@ -45,7 +46,7 @@ npm test                     # pruebas de las reglas de texto
 ### 3. GitHub y Vercel
 1. Sube el proyecto a un repositorio de GitHub (`.env.local` está en `.gitignore`).
 2. En Vercel: **Add New > Project**, importa el repositorio.
-3. En **Environment Variables** agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. En **Environment Variables** agrega `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`, y también `SUPABASE_SERVICE_ROLE_KEY` (clave *service_role* de Supabase: Project Settings > API; solo para el servidor).
 4. Despliega. Cada `git push` a `main` publica una versión nueva.
 
 ## Seguridad
@@ -53,14 +54,16 @@ npm test                     # pruebas de las reglas de texto
 - El navegador **nunca escribe directo** en las tablas. Solo lee lo de su sala (RLS) y llama a funciones SQL que validan las reglas (`create_room`, `join_room`, `leave_room`, `ensure_player`).
 - Las respuestas de los demás no se pueden leer mientras se escribe: solo cuando la ronda pasa a revisión.
 - El diccionario es de solo lectura para los jugadores; solo el servidor (`service_role`) lo ampliará.
-- La clave `service_role` **nunca** va en variables `NEXT_PUBLIC_`. Se usará solo en rutas del servidor (etapas 6 a 8).
+- La clave `service_role` **nunca** va en variables `NEXT_PUBLIC_`. Se usa solo en `src/app/api/validar` (servidor de Vercel).
 
 ## Pruebas
 
-- `npm test`: reglas de texto (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
+- `npm test`: reglas de texto y fuentes externas de validación (con respuestas simuladas, sin red) (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
 - `supabase/tests/`: 20 pruebas de reglas y seguridad (salas, asientos, jugador mano, votos, RLS, Realtime). Se ejecutan sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones, el seed y `reglas_y_seguridad.sql`.
 
 ## Decisiones de diseño
+
+- **Validación (etapa 7):** formato y letra se comprueban al enviar la palabra. Al pasar la ronda a revisión, `/api/validar` mira primero el diccionario propio y después Wikidata y Wikcionario (`src/lib/validation/config.ts` dice qué fuente sirve para cada categoría). Las fuentes solo pueden **aceptar**: lo que no confirman, o si fallan, queda `in_review` para la votación de los jugadores (etapa 8). Lo aceptado por una fuente externa se guarda en `word_dictionary` con su origen.
 
 - **Categorías fijas** para todas las rondas, guardadas en `categories` (se pueden desactivar con `is_active`). La partida copia las activas en `game_categories` al empezar.
 - **Identidad:** sesión anónima de Supabase + nombre de jugador. La sesión persiste en el navegador, lo que permite reconectarse.
@@ -74,6 +77,8 @@ npm test                     # pruebas de las reglas de texto
 src/app/            páginas (inicio y sala/[codigo])
 src/components/     interfaz reutilizable
 src/lib/game/       reglas de texto (con pruebas)
+src/lib/validation/ fuentes externas de validación (con pruebas)
+src/app/api/validar ruta del servidor que valida las respuestas
 src/lib/            Supabase, salas, tiempo real, errores
 supabase/migrations esquema, RLS y funciones
 supabase/seed.sql   diccionario inicial (14 categorías)

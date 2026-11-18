@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnswerForm } from "@/components/AnswerForm";
+import { ReviewView } from "@/components/ReviewView";
 import { Wheel } from "@/components/Wheel";
 import { Spinner } from "@/components/Screen";
-import { resolveLetterVote, spinRound, voteLetter } from "@/lib/game/api";
+import { resolveLetterVote, spinRound, validateRound, voteLetter } from "@/lib/game/api";
 import { SPIN_ANIM_MS, SPIN_WAIT_MS, VOTE_TOTAL_MS } from "@/lib/game/rules";
 import { friendlyError } from "@/lib/errors";
 import { seatStyle } from "@/lib/seatStyles";
@@ -21,10 +22,11 @@ interface GameViewProps {
 const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
 
 export function GameView({ room, members, myId, onExit }: GameViewProps) {
-  const { round, previousRound, votes, categories, myAnswers, progress, endVotes, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
+  const { round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const lastResolve = useRef<{ id: string; at: number } | null>(null);
+  const lastValidate = useRef<{ id: string; at: number } | null>(null);
 
   const nameOf = (playerId: string) =>
     members.find((m) => m.playerId === playerId)?.username ?? "jugador";
@@ -48,6 +50,19 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
     resolveLetterVote(round.id)
       .then(() => refresh())
       .catch((e) => console.error("[wordix] no se pudo cerrar la votación", e));
+  });
+
+  // Al pasar a revisión se piden las validaciones al servidor. Es seguro que lo pidan
+  // varios jugadores: el servidor atiende a uno solo. Se reintenta si algo quedó pendiente.
+  useEffect(() => {
+    if (!round || round.status !== "reviewing") return;
+    if (!roundAnswers.some((a) => a.status === "pending" && a.answer)) return;
+    const last = lastValidate.current;
+    if (last && last.id === round.id && Date.now() - last.at < 15_000) return;
+    lastValidate.current = { id: round.id, at: Date.now() };
+    validateRound(round.id)
+      .then(() => refresh())
+      .catch((e) => console.error("[wordix] no se pudo validar la ronda", e));
   });
 
   async function run(action: () => Promise<unknown>) {
@@ -200,13 +215,17 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
         ) : null}
 
         {status === "reviewing" ? (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex w-full flex-col items-center gap-4">
             <p className="font-display text-xl font-bold">
               {round.stopped_by ? `${nameOf(round.stopped_by)} dio STOP` : "La ronda terminó por acuerdo"}
             </p>
-            <p className="max-w-sm text-mist">
-              Tus respuestas quedaron guardadas. La revisión de palabras y los puntos llegan en las siguientes etapas.
-            </p>
+            <ReviewView
+              categories={categories}
+              answers={roundAnswers}
+              reviews={reviews}
+              players={members.map((m) => ({ id: m.playerId, name: m.username }))}
+              myId={myId}
+            />
           </div>
         ) : null}
       </section>

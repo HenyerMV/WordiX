@@ -4,7 +4,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchServerNow } from "./game/api";
 import { getSupabase } from "./supabase/client";
-import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round } from "./types";
+import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round, RoundAnswer, WordReview } from "./types";
 
 /**
  * Estado de la partida de una sala: partida actual, ronda actual, la ronda
@@ -20,6 +20,8 @@ export function useGame(roomId: string, myId: string) {
   const [categories, setCategories] = useState<GameCategory[]>([]);
   const [myAnswers, setMyAnswers] = useState<MyAnswer[]>([]);
   const [progress, setProgress] = useState<AnswerProgress[]>([]);
+  const [roundAnswers, setRoundAnswers] = useState<RoundAnswer[]>([]);
+  const [reviews, setReviews] = useState<WordReview[]>([]);
   const [endVotes, setEndVotes] = useState<EndVote[]>([]);
   const categoriesRef = useRef<{ gameId: string; list: GameCategory[] } | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -48,6 +50,8 @@ export function useGame(roomId: string, myId: string) {
         setMyAnswers([]);
         setProgress([]);
         setEndVotes([]);
+        setRoundAnswers([]);
+        setReviews([]);
         setLoaded(true);
         return;
       }
@@ -122,7 +126,31 @@ export function useGame(roomId: string, myId: string) {
         nextEndVotes = (ev ?? []) as EndVote[];
       }
 
+      // En revisión se ven las respuestas de todos (las reglas RLS lo permiten solo entonces).
+      let nextRoundAnswers: RoundAnswer[] = [];
+      let nextReviews: WordReview[] = [];
+      if (current && (current.status === "reviewing" || current.status === "finished")) {
+        const { data: all, error: allError } = await supabase
+          .from("game_answers")
+          .select("id, player_id, category_id, answer, status, decided_by, points")
+          .eq("round_id", current.id);
+        if (allError) throw allError;
+        nextRoundAnswers = (all ?? []) as RoundAnswer[];
+
+        const ids = nextRoundAnswers.map((a) => a.id);
+        if (ids.length > 0) {
+          const { data: rv, error: reviewsError } = await supabase
+            .from("word_reviews")
+            .select("id, answer_id, status")
+            .in("answer_id", ids);
+          if (reviewsError) throw reviewsError;
+          nextReviews = (rv ?? []) as WordReview[];
+        }
+      }
+
       if (!aliveRef.current) return;
+      setRoundAnswers(nextRoundAnswers);
+      setReviews(nextReviews);
       setProgress(nextProgress);
       setEndVotes(nextEndVotes);
       setCategories(categoriesRef.current?.list ?? []);
@@ -153,6 +181,13 @@ export function useGame(roomId: string, myId: string) {
     let channel: RealtimeChannel | null = null;
     const supabase = getSupabase();
 
+    // La validación cambia muchas filas seguidas: se agrupan en una sola actualización.
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => void refresh(), 300);
+    };
+
     void syncClock();
     void refresh();
 
@@ -163,6 +198,8 @@ export function useGame(roomId: string, myId: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "letter_votes" }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "answer_progress" }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "round_end_votes" }, () => void refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_answers" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "word_reviews" }, scheduleRefresh)
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void refresh();
       });
@@ -181,6 +218,7 @@ export function useGame(roomId: string, myId: string) {
 
     return () => {
       aliveRef.current = false;
+      window.clearTimeout(refreshTimer);
       window.clearInterval(poll);
       window.clearInterval(clock);
       window.clearInterval(ticker);
@@ -189,5 +227,5 @@ export function useGame(roomId: string, myId: string) {
     };
   }, [roomId, refresh, syncClock]);
 
-  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, loaded, offset, serverNow: tick + offset, refresh };
+  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, loaded, offset, serverNow: tick + offset, refresh };
 }

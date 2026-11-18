@@ -89,3 +89,20 @@ export interface MyAnswer {
   answer: string | null;
   status: "pending" | "accepted" | "rejected" | "in_review";
 }
+
+/** Respuesta de cualquier jugador, visible cuando la ronda está en revisión. */
+export interface RoundAnswer {
+  id: string;
+  player_id: string;
+  category_id: number;
+  answer: string | null;
+  status: "pending" | "accepted" | "rejected" | "in_review";
+  decided_by: "format" | "letter" | "dictionary" | "wikidata" | "wiktionary" | "vote" | null;
+  points: number;
+}
+
+export interface WordReview {
+  id: string;
+  answer_id: string;
+  status: "open" | "accepted" | "rejected";
+}

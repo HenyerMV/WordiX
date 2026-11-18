@@ -33,6 +33,22 @@ export async function fetchServerNow(): Promise<number> {
   return Date.parse(data as string);
 }
 
+/** Pide al servidor que valide las respuestas de la ronda (es seguro llamarlo varias veces). */
+export async function validateRound(roundId: string): Promise<void> {
+  const { data } = await getSupabase().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("NOT_AUTHENTICATED");
+  const res = await fetch("/api/validar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ roundId }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "VALIDATION_FAILED");
+  }
+}
+
 export async function startMyTurn(roundId: string): Promise<AnswerProgress> {
   const { data, error } = await getSupabase().rpc("start_my_turn", { p_round: roundId });
   if (error) throw error;
