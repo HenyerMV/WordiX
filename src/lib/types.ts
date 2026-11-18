@@ -106,3 +106,9 @@ export interface WordReview {
   answer_id: string;
   status: "open" | "accepted" | "rejected";
 }
+
+export interface WordVote {
+  review_id: string;
+  voter_id: string;
+  approve: boolean;
+}

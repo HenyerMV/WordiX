@@ -4,7 +4,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchServerNow } from "./game/api";
 import { getSupabase } from "./supabase/client";
-import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round, RoundAnswer, WordReview } from "./types";
+import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round, RoundAnswer, WordReview, WordVote } from "./types";
 
 /**
  * Estado de la partida de una sala: partida actual, ronda actual, la ronda
@@ -22,6 +22,7 @@ export function useGame(roomId: string, myId: string) {
   const [progress, setProgress] = useState<AnswerProgress[]>([]);
   const [roundAnswers, setRoundAnswers] = useState<RoundAnswer[]>([]);
   const [reviews, setReviews] = useState<WordReview[]>([]);
+  const [wordVotes, setWordVotes] = useState<WordVote[]>([]);
   const [endVotes, setEndVotes] = useState<EndVote[]>([]);
   const categoriesRef = useRef<{ gameId: string; list: GameCategory[] } | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -52,6 +53,7 @@ export function useGame(roomId: string, myId: string) {
         setEndVotes([]);
         setRoundAnswers([]);
         setReviews([]);
+        setWordVotes([]);
         setLoaded(true);
         return;
       }
@@ -129,6 +131,7 @@ export function useGame(roomId: string, myId: string) {
       // En revisión se ven las respuestas de todos (las reglas RLS lo permiten solo entonces).
       let nextRoundAnswers: RoundAnswer[] = [];
       let nextReviews: WordReview[] = [];
+      let nextWordVotes: WordVote[] = [];
       if (current && (current.status === "reviewing" || current.status === "finished")) {
         const { data: all, error: allError } = await supabase
           .from("game_answers")
@@ -145,12 +148,22 @@ export function useGame(roomId: string, myId: string) {
             .in("answer_id", ids);
           if (reviewsError) throw reviewsError;
           nextReviews = (rv ?? []) as WordReview[];
+
+          if (nextReviews.length > 0) {
+            const { data: wv, error: wordVotesError } = await supabase
+              .from("word_votes")
+              .select("review_id, voter_id, approve")
+              .in("review_id", nextReviews.map((r) => r.id));
+            if (wordVotesError) throw wordVotesError;
+            nextWordVotes = (wv ?? []) as WordVote[];
+          }
         }
       }
 
       if (!aliveRef.current) return;
       setRoundAnswers(nextRoundAnswers);
       setReviews(nextReviews);
+      setWordVotes(nextWordVotes);
       setProgress(nextProgress);
       setEndVotes(nextEndVotes);
       setCategories(categoriesRef.current?.list ?? []);
@@ -200,6 +213,7 @@ export function useGame(roomId: string, myId: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "round_end_votes" }, () => void refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "game_answers" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "word_reviews" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "word_votes" }, scheduleRefresh)
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void refresh();
       });
@@ -227,5 +241,5 @@ export function useGame(roomId: string, myId: string) {
     };
   }, [roomId, refresh, syncClock]);
 
-  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, loaded, offset, serverNow: tick + offset, refresh };
+  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow: tick + offset, refresh };
 }

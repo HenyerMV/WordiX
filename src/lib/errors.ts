@@ -23,6 +23,10 @@ const MESSAGES: Record<string, string> = {
   INVALID_ANSWER: "Escribe una palabra con solo letras minúsculas.",
   WRONG_LETTER: "La palabra debe empezar con la letra de la ronda.",
   INCOMPLETE_ANSWERS: "Para dar STOP debes completar todas las categorías.",
+  REVIEW_NOT_FOUND: "Esa palabra ya no está en revisión.",
+  REVIEW_CLOSED: "Esa palabra ya fue decidida.",
+  AUTHOR_CANNOT_VOTE: "No puedes votar tu propia palabra.",
+  ALREADY_VOTED: "Ya votaste esta palabra.",
   CODE_GENERATION_FAILED: "No pudimos crear el código de la sala. Inténtalo otra vez.",
 };
 

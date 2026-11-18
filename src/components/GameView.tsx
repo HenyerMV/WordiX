@@ -22,7 +22,7 @@ interface GameViewProps {
 const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
 
 export function GameView({ room, members, myId, onExit }: GameViewProps) {
-  const { round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
+  const { round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const lastResolve = useRef<{ id: string; at: number } | null>(null);
@@ -223,8 +223,10 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
               categories={categories}
               answers={roundAnswers}
               reviews={reviews}
+              votes={wordVotes}
               players={members.map((m) => ({ id: m.playerId, name: m.username }))}
               myId={myId}
+              onChanged={() => void refresh()}
             />
           </div>
         ) : null}

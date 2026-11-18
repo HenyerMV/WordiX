@@ -88,3 +88,8 @@ export async function voteEndRound(roundId: string, want: boolean): Promise<Roun
   if (error) throw error;
   return data as Round;
 }
+
+export async function voteWord(reviewId: string, approve: boolean): Promise<void> {
+  const { error } = await getSupabase().rpc("vote_word", { p_review: reviewId, p_approve: approve });
+  if (error) throw error;
+}
