@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnswerForm } from "@/components/AnswerForm";
+import { FinalResults } from "@/components/FinalResults";
 import { ReviewView } from "@/components/ReviewView";
+import { RoundResults } from "@/components/RoundResults";
 import { Wheel } from "@/components/Wheel";
 import { Spinner } from "@/components/Screen";
-import { resolveLetterVote, spinRound, validateRound, voteLetter } from "@/lib/game/api";
+import { finishRound, resolveLetterVote, spinRound, startNextRound, validateRound, voteLetter } from "@/lib/game/api";
 import { SPIN_ANIM_MS, SPIN_WAIT_MS, VOTE_TOTAL_MS } from "@/lib/game/rules";
 import { friendlyError } from "@/lib/errors";
 import { seatStyle } from "@/lib/seatStyles";
@@ -22,11 +24,12 @@ interface GameViewProps {
 const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
 
 export function GameView({ room, members, myId, onExit }: GameViewProps) {
-  const { round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
+  const { game, results, finishedRounds, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow, refresh } = useGame(room.id, myId);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const lastResolve = useRef<{ id: string; at: number } | null>(null);
   const lastValidate = useRef<{ id: string; at: number } | null>(null);
+  const lastFinish = useRef<{ id: string; at: number } | null>(null);
 
   const nameOf = (playerId: string) =>
     members.find((m) => m.playerId === playerId)?.username ?? "jugador";
@@ -65,6 +68,20 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
       .catch((e) => console.error("[wordix] no se pudo validar la ronda", e));
   });
 
+  // Cuando la revisión termina (nada pendiente ni en votación) se cierra la ronda y se
+  // reparten los puntos. Cualquier jugador puede pedirlo; el servidor decide y es idempotente.
+  useEffect(() => {
+    if (!round || round.status !== "reviewing") return;
+    if (roundAnswers.some((a) => (a.status === "pending" || a.status === "in_review") && a.answer)) return;
+    if (roundAnswers.length === 0 && elapsed < 6000) return; // aún no llegaron las respuestas
+    const last = lastFinish.current;
+    if (last && last.id === round.id && Date.now() - last.at < 5000) return;
+    lastFinish.current = { id: round.id, at: Date.now() };
+    finishRound(round.id)
+      .then(() => refresh())
+      .catch((e) => console.error("[wordix] no se pudo cerrar la ronda", e));
+  });
+
   async function run(action: () => Promise<unknown>) {
     if (busy) return;
     setBusy(true);
@@ -89,17 +106,40 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
   const myVote = votes.find((v) => v.player_id === myId)?.accept;
   const letter = round.letter ? round.letter.toUpperCase() : null;
   const spinStartedAt = status === "spinning" ? null : startedAt;
+  const players = members.map((m) => ({ id: m.playerId, name: m.username }));
+  const pointsOf = (playerId: string) => results.find((r) => r.player_id === playerId)?.total_points ?? 0;
+  const totalRounds = room.total_rounds;
+  const shownRound = Math.min(status === "finished" ? finishedRounds : finishedRounds + 1, totalRounds);
+
+  if (game?.status === "finished") {
+    return (
+      <>
+        <header className="flex items-center justify-between gap-3">
+          <p className="text-sm uppercase tracking-widest text-mist">Sala {room.code}</p>
+        </header>
+        <FinalResults players={players} results={results} myId={myId} totalRounds={totalRounds} onExit={onExit} />
+      </>
+    );
+  }
 
   return (
     <>
       <header className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm uppercase tracking-widest text-mist">Sala {room.code}</p>
-          <h1 className="font-display text-2xl font-bold">Ronda {round.number}</h1>
+          <h1 className="font-display text-2xl font-bold">
+            Ronda {shownRound} de {totalRounds}
+          </h1>
         </div>
-        <button type="button" className="btn-ghost" onClick={onExit}>
-          Inicio
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="rounded-xl bg-paper px-3 py-1.5 text-right text-ink-900" aria-label={`Tu puntaje: ${pointsOf(myId)} puntos`}>
+            <span className="block text-[10px] font-bold uppercase leading-none tracking-wide">Tus puntos</span>
+            <span className="font-display text-xl font-bold leading-tight">{pointsOf(myId)}</span>
+          </span>
+          <button type="button" className="btn-ghost" onClick={onExit}>
+            Inicio
+          </button>
+        </div>
       </header>
 
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Jugadores">
@@ -134,6 +174,9 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
                         ? "terminó"
                         : "\u00A0"}
                 </span>
+              </span>
+              <span className="ml-auto pl-1 font-display font-bold text-volt" aria-label={`${pointsOf(m.playerId)} puntos`}>
+                {pointsOf(m.playerId)}
               </span>
             </li>
           );
@@ -225,6 +268,30 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
               reviews={reviews}
               votes={wordVotes}
               players={members.map((m) => ({ id: m.playerId, name: m.username }))}
+              myId={myId}
+              onChanged={() => void refresh()}
+            />
+          </div>
+        ) : null}
+
+        {status === "finished" ? (
+          <div className="flex w-full flex-col items-center gap-6">
+            <RoundResults
+              players={players}
+              answers={roundAnswers}
+              results={results}
+              myId={myId}
+              roundNumber={shownRound}
+              totalRounds={totalRounds}
+              busy={busy}
+              onNext={() => run(() => startNextRound(round.id))}
+            />
+            <ReviewView
+              categories={categories}
+              answers={roundAnswers}
+              reviews={reviews}
+              votes={wordVotes}
+              players={players}
               myId={myId}
               onChanged={() => void refresh()}
             />

@@ -27,6 +27,9 @@ const MESSAGES: Record<string, string> = {
   REVIEW_CLOSED: "Esa palabra ya fue decidida.",
   AUTHOR_CANNOT_VOTE: "No puedes votar tu propia palabra.",
   ALREADY_VOTED: "Ya votaste esta palabra.",
+  INVALID_ROUNDS: "Elige entre 1 y 10 rondas.",
+  REVIEW_NOT_DONE: "Todavía hay palabras por revisar.",
+  GAME_FINISHED: "La partida ya terminó.",
   CODE_GENERATION_FAILED: "No pudimos crear el código de la sala. Inténtalo otra vez.",
 };
 

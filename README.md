@@ -16,7 +16,7 @@ Juego multijugador de categorías y palabras (estilo Stop) para 2 a 4 jugadores.
 | 6. Categorías una a una (20 s), saltar, pendientes, STOP y terminar ronda | Hecha (falta probarla en línea) |
 | 7. Validación automática (diccionario, Wikidata, Wikcionario) | Hecha (falta probarla en línea) |
 | 8. Votación de palabras y aprendizaje | Hecha (falta probarla en línea) |
-| 9. Puntuación y resultados | Pendiente |
+| 9. Puntos, rondas elegidas al crear la sala y resultados finales | Hecha (falta probarla en línea) |
 | 10. Pruebas integrales y lanzamiento | Pendiente |
 
 Las tablas de rondas, respuestas, votos y resultados ya existen con sus reglas, pero la interfaz y la lógica del juego se construyen en las etapas 5 a 9. No hay botones sin función: lo que aparece en pantalla funciona.
@@ -33,7 +33,8 @@ Las tablas de rondas, respuestas, votos y resultados ya existen con sus reglas, 
    4. `supabase/migrations/20261116000004_respuestas.sql`
    5. `supabase/migrations/20261116000005_validacion.sql`
    6. `supabase/migrations/20261116000006_votacion_palabras.sql`
-   7. `supabase/seed.sql`
+   7. `supabase/migrations/20261116000007_puntos_y_rondas.sql`
+   8. `supabase/seed.sql`
 4. En **Project Settings > API** copia la URL y la clave pública (anon/publishable).
 
 ### 2. Local
@@ -63,7 +64,7 @@ El plan gratuito de Supabase pausa el proyecto tras 7 días sin actividad. `verc
 
 ## Pruebas
 
-- `npm test`: reglas de texto, fuentes externas de validación (con respuestas simuladas, sin red) y reglas de la votación de palabras (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
+- `npm test`: reglas de texto, fuentes externas de validación (con respuestas simuladas, sin red) reglas de la votación de palabras y de puntos (minúsculas, sin números ni símbolos, ñ, tildes, código de sala).
 - `supabase/tests/`: 20 pruebas de reglas y seguridad (salas, asientos, jugador mano, votos, RLS, Realtime). Se ejecutan sobre un PostgreSQL con `supabase_shim.sql` (simula roles y `auth.uid()` de Supabase), luego las migraciones, el seed y `reglas_y_seguridad.sql`.
 
 ## Decisiones de diseño
@@ -74,6 +75,7 @@ El plan gratuito de Supabase pausa el proyecto tras 7 días sin actividad. `verc
 - **Identidad:** sesión anónima de Supabase + nombre de jugador. La sesión persiste en el navegador, lo que permite reconectarse.
 - **Reloj oficial en el servidor:** `rounds.phase_started_at`; los plazos de 20 s se calcularán a partir de ahí.
 - **Votación de palabras (etapa 8):** una palabra `in_review` la votan todos los jugadores menos su autor. Un voto en contra la rechaza al instante; hace falta que TODOS voten a favor para aceptarla. El voto no se puede cambiar. Si se acepta por unanimidad se guarda en `word_dictionary` con origen `vote`. La decide la función SQL `vote_word`; `src/lib/game/reviews.ts` replica la regla para la pantalla y para las pruebas.
+- **Puntos y rondas (etapa 9):** el anfitrión elige 3 a 10 rondas al crear la sala. Al terminar la revisión, `finish_round` da 50 puntos a cada jugador que comparte una palabra válida (misma categoría, sin importar tildes ni mayúsculas) y 100 a quien tiene una palabra válida que nadie más tiene; lo rechazado vale 0. `game_results` guarda el total de cada jugador. Al cerrar la última ronda la partida termina y se calculan las posiciones (los empates comparten lugar). Si se rechaza la letra, esa ronda no cuenta. `src/lib/game/scoring.ts` replica la regla para las pruebas.
 - **Tildes:** se conserva la escritura original y se busca con `word_normalized` (sin tildes, con ñ).
 - **Jugador mano:** el orden lo da `room_players.seat`; un trigger impide que alguien sea mano dos rondas seguidas.
 

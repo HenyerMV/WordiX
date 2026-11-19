@@ -4,7 +4,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchServerNow } from "./game/api";
 import { getSupabase } from "./supabase/client";
-import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round, RoundAnswer, WordReview, WordVote } from "./types";
+import type { AnswerProgress, EndVote, Game, GameCategory, LetterVote, MyAnswer, Round, RoundAnswer, WordReview, WordVote, GameResult } from "./types";
 
 /**
  * Estado de la partida de una sala: partida actual, ronda actual, la ronda
@@ -23,6 +23,8 @@ export function useGame(roomId: string, myId: string) {
   const [roundAnswers, setRoundAnswers] = useState<RoundAnswer[]>([]);
   const [reviews, setReviews] = useState<WordReview[]>([]);
   const [wordVotes, setWordVotes] = useState<WordVote[]>([]);
+  const [results, setResults] = useState<GameResult[]>([]);
+  const [finishedRounds, setFinishedRounds] = useState(0);
   const [endVotes, setEndVotes] = useState<EndVote[]>([]);
   const categoriesRef = useRef<{ gameId: string; list: GameCategory[] } | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -54,6 +56,8 @@ export function useGame(roomId: string, myId: string) {
         setRoundAnswers([]);
         setReviews([]);
         setWordVotes([]);
+        setResults([]);
+        setFinishedRounds(0);
         setLoaded(true);
         return;
       }
@@ -160,7 +164,23 @@ export function useGame(roomId: string, myId: string) {
         }
       }
 
+      // Puntajes de la partida y cuántas rondas ya se cerraron.
+      const { data: res, error: resultsError } = await supabase
+        .from("game_results")
+        .select("game_id, player_id, total_points, position")
+        .eq("game_id", g.id);
+      if (resultsError) throw resultsError;
+
+      const { count: finishedCount, error: finishedError } = await supabase
+        .from("rounds")
+        .select("id", { count: "exact", head: true })
+        .eq("game_id", g.id)
+        .eq("status", "finished");
+      if (finishedError) throw finishedError;
+
       if (!aliveRef.current) return;
+      setResults((res ?? []) as GameResult[]);
+      setFinishedRounds(finishedCount ?? 0);
       setRoundAnswers(nextRoundAnswers);
       setReviews(nextReviews);
       setWordVotes(nextWordVotes);
@@ -214,6 +234,7 @@ export function useGame(roomId: string, myId: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "game_answers" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "word_reviews" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "word_votes" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_results" }, scheduleRefresh)
       .subscribe((status) => {
         if (status === "SUBSCRIBED") void refresh();
       });
@@ -241,5 +262,5 @@ export function useGame(roomId: string, myId: string) {
     };
   }, [roomId, refresh, syncClock]);
 
-  return { game, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow: tick + offset, refresh };
+  return { game, results, finishedRounds, round, previousRound, votes, categories, myAnswers, progress, endVotes, roundAnswers, reviews, wordVotes, loaded, offset, serverNow: tick + offset, refresh };
 }

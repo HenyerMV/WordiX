@@ -13,3 +13,7 @@ export const VOTE_TOTAL_MS = 25_000;
 
 /** Tiempo máximo por categoría (si queda más de una pendiente). */
 export const CATEGORY_MS = 20_000;
+
+/** Rondas que se pueden elegir al crear la sala. */
+export const ROUND_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10] as const;
+export const DEFAULT_ROUNDS = 3;

@@ -12,6 +12,8 @@ export interface Room {
   host_id: string;
   status: RoomStatus;
   max_players: number;
+  /** Cuántas rondas se juegan en la partida (se elige al crear la sala). */
+  total_rounds: number;
   created_at: string;
 }
 
@@ -111,4 +113,13 @@ export interface WordVote {
   review_id: string;
   voter_id: string;
   approve: boolean;
+}
+
+/** Puntaje de un jugador en la partida (se actualiza al cerrar cada ronda). */
+export interface GameResult {
+  game_id: string;
+  player_id: string;
+  total_points: number;
+  /** Solo se llena cuando termina la partida. */
+  position: number | null;
 }

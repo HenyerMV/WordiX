@@ -4,8 +4,8 @@ import type { Member, Room } from "./types";
 // Todas las operaciones que cambian datos pasan por funciones SQL seguras
 // (supabase/migrations/..._juego.sql). Aquí solo se llaman y se leen datos.
 
-export async function createRoom(): Promise<Room> {
-  const { data, error } = await getSupabase().rpc("create_room");
+export async function createRoom(rounds: number): Promise<Room> {
+  const { data, error } = await getSupabase().rpc("create_room", { p_rounds: rounds });
   if (error) throw error;
   return data as Room;
 }

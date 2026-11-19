@@ -7,6 +7,7 @@ import { NameForm } from "@/components/NameForm";
 import { usePlayer } from "@/components/PlayerProvider";
 import { Screen, Spinner } from "@/components/Screen";
 import { friendlyError } from "@/lib/errors";
+import { DEFAULT_ROUNDS, ROUND_OPTIONS } from "@/lib/game/rules";
 import { ROOM_CODE_LENGTH, isValidRoomCode, sanitizeCode } from "@/lib/game/text";
 import { createRoom, joinRoom } from "@/lib/rooms";
 
@@ -30,6 +31,7 @@ export default function HomePage() {
   const { status, player, error, saveName, retry } = usePlayer();
   const [editingName, setEditingName] = useState(false);
   const [code, setCode] = useState("");
+  const [rounds, setRounds] = useState<number>(DEFAULT_ROUNDS);
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -38,7 +40,7 @@ export default function HomePage() {
     setBusy("create");
     setActionError(null);
     try {
-      const room = await createRoom();
+      const room = await createRoom(rounds);
       router.push(`/sala/${room.code}`);
     } catch (e) {
       console.error("[wordix] no se pudo crear la sala", e);
@@ -139,6 +141,22 @@ export default function HomePage() {
                   Serás el anfitrión y el primer jugador mano. Comparte el código con tus amigos.
                 </p>
               </div>
+              <fieldset>
+                <legend className="mb-2 text-sm font-bold">Número de rondas</legend>
+                <div className="flex flex-wrap gap-2">
+                  {ROUND_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={rounds === n}
+                      className={`${rounds === n ? "btn-primary" : "btn-ghost"} !px-3 !py-1.5 text-sm`}
+                      onClick={() => setRounds(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <button
                 type="button"
                 className="btn-primary mt-auto"

@@ -176,6 +176,7 @@ export default function RoomPage() {
           <CopyButton label="Copiar código" getText={() => code} />
           <CopyButton label="Copiar enlace" getText={() => `${window.location.origin}/sala/${code}`} />
         </div>
+        <p className="mt-4 text-sm text-mist">Partida a {room.total_rounds} rondas</p>
       </section>
 
       <section className="card" aria-labelledby="jugadores">

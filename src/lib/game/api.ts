@@ -93,3 +93,17 @@ export async function voteWord(reviewId: string, approve: boolean): Promise<void
   const { error } = await getSupabase().rpc("vote_word", { p_review: reviewId, p_approve: approve });
   if (error) throw error;
 }
+
+/** Reparte los puntos y cierra la ronda (es seguro llamarlo varias veces). */
+export async function finishRound(roundId: string): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("finish_round", { p_round: roundId });
+  if (error) throw error;
+  return data as Round;
+}
+
+/** Abre la ronda siguiente después de ver los resultados. */
+export async function startNextRound(roundId: string): Promise<Round> {
+  const { data, error } = await getSupabase().rpc("start_next_round", { p_round: roundId });
+  if (error) throw error;
+  return data as Round;
+}

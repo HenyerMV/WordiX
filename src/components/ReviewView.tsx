@@ -26,8 +26,11 @@ const SOURCE_LABEL: Record<string, string> = {
 function Badge({ answer }: { answer: RoundAnswer }) {
   if (answer.status === "accepted") {
     return (
-      <span className="rounded-lg bg-volt/15 px-2 py-0.5 text-xs font-bold text-volt">
-        Aceptada{answer.decided_by ? ` · ${SOURCE_LABEL[answer.decided_by] ?? answer.decided_by}` : ""}
+      <span className="flex items-center gap-2">
+        <span className="rounded-lg bg-volt/15 px-2 py-0.5 text-xs font-bold text-volt">
+          Aceptada{answer.decided_by ? ` · ${SOURCE_LABEL[answer.decided_by] ?? answer.decided_by}` : ""}
+        </span>
+        {answer.points > 0 ? <span className="font-display font-bold text-volt">+{answer.points}</span> : null}
       </span>
     );
   }
