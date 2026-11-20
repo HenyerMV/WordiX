@@ -158,37 +158,38 @@ export default function RoomPage() {
         <ConnectionBadge connection={connection} />
       </header>
 
-      <section className="card text-center">
-        <p className="text-sm uppercase tracking-widest text-mist">Código de la sala</p>
-        <div className="mt-3 flex justify-center gap-1.5 sm:gap-2" aria-label={`Código ${code.split("").join(" ")}`}>
+      <section className="card text-center !p-3 sm:!p-5">
+        <p className="text-xs uppercase tracking-widest text-mist">
+          Código de la sala · {room.total_rounds} rondas
+        </p>
+        <div className="mt-2 flex justify-center gap-1.5 sm:gap-2" aria-label={`Código ${code.split("").join(" ")}`}>
           {code.split("").map((digit, index) => (
             <span
               key={index}
               aria-hidden="true"
               style={{ animationDelay: `${index * 60}ms` }}
-              className="inline-flex h-12 w-10 items-center justify-center rounded-xl bg-paper font-display text-3xl font-bold text-ink-900 shadow-[0_4px_0_0_rgba(0,0,0,0.35)] animate-pop-in sm:h-16 sm:w-14 sm:text-4xl"
+              className="inline-flex h-11 w-9 items-center justify-center rounded-xl bg-paper font-display text-2xl font-bold text-ink-900 shadow-[0_4px_0_0_rgba(0,0,0,0.35)] animate-pop-in sm:h-16 sm:w-14 sm:text-4xl"
             >
               {digit}
             </span>
           ))}
         </div>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
           <CopyButton label="Copiar código" getText={() => code} />
           <CopyButton label="Copiar enlace" getText={() => `${window.location.origin}/sala/${code}`} />
         </div>
-        <p className="mt-4 text-sm text-mist">Partida a {room.total_rounds} rondas</p>
       </section>
 
-      <section className="card" aria-labelledby="jugadores">
-        <div className="mb-4 flex items-baseline justify-between gap-3">
-          <h2 id="jugadores" className="font-display text-xl font-bold">
+      <section className="card !p-3 sm:!p-5" aria-labelledby="jugadores">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <h2 id="jugadores" className="font-display text-lg font-bold">
             Jugadores
           </h2>
-          <p className="text-mist" aria-live="polite">
+          <p className="text-sm text-mist" aria-live="polite">
             {members.length} de {room.max_players}
           </p>
         </div>
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-2 gap-2">
           {slots.map((seat) => {
             const member = memberBySeat.get(seat);
             const isMe = member?.playerId === myId;
@@ -204,44 +205,41 @@ export default function RoomPage() {
             );
           })}
         </ul>
-        <p className="mt-4 text-sm text-mist">
+        <p className="mt-2 text-xs text-mist">
           {members.length < 2
             ? "Se necesitan al menos 2 jugadores. Comparte el código para que se unan."
             : "Pueden jugar de 2 a 4 personas."}
         </p>
       </section>
 
-      <section className="card flex flex-col items-center gap-3 text-center">
-        {isHost ? (
-          <>
-            <button type="button" className="btn-primary text-xl" onClick={handleStart} disabled={!canStart || starting}>
-              {starting ? "Empezando…" : "Empezar partida"}
-            </button>
-            {!canStart ? <p className="text-sm text-mist">Se activa cuando haya 2 o más jugadores.</p> : null}
-          </>
-        ) : (
-          <p className="text-mist" aria-live="polite">
-            Esperando a que {hostName} empiece la partida…
-          </p>
-        )}
-        {startError ? (
-          <p role="alert" className="text-bubble">
-            {startError}
-          </p>
-        ) : null}
-      </section>
-
       {leaveError ? (
-        <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
+        <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-2 text-sm text-bubble">
           {leaveError}
         </p>
       ) : null}
 
-      <footer className="flex justify-center">
-        <button type="button" className="btn-ghost" onClick={handleLeave} disabled={leaving}>
+      <div className="mt-auto flex flex-col items-center gap-2">
+        {isHost ? (
+          <>
+            <button type="button" className="btn-primary w-full text-xl sm:w-auto" onClick={handleStart} disabled={!canStart || starting}>
+              {starting ? "Empezando…" : "Empezar partida"}
+            </button>
+            {!canStart ? <p className="text-xs text-mist">Se activa cuando haya 2 o más jugadores.</p> : null}
+          </>
+        ) : (
+          <p className="text-center text-mist" aria-live="polite">
+            Esperando a que {hostName} empiece la partida…
+          </p>
+        )}
+        {startError ? (
+          <p role="alert" className="text-sm text-bubble">
+            {startError}
+          </p>
+        ) : null}
+        <button type="button" className="btn-ghost !py-2 text-sm" onClick={handleLeave} disabled={leaving}>
           {leaving ? "Saliendo…" : "Salir de la sala"}
         </button>
-      </footer>
+      </div>
     </Screen>
   );
 }

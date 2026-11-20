@@ -66,9 +66,9 @@ export default function HomePage() {
 
   return (
     <Screen wide>
-      <header className="flex flex-col items-center gap-4 pt-2 text-center sm:pt-6">
+      <header className="flex flex-col items-center gap-2 text-center sm:gap-4">
         <Logo />
-        <p className="max-w-md text-balance text-lg text-mist">
+        <p className="hidden max-w-md text-balance text-lg text-mist [@media(min-height:760px)]:block">
           Gira la ruleta, llena las categorías antes que los demás y gana la ronda.
         </p>
       </header>
@@ -113,8 +113,8 @@ export default function HomePage() {
 
       {status === "ready" && player && !editingName ? (
         <>
-          <section className="flex items-center justify-between gap-3 rounded-2xl border border-ink-600 bg-ink-800/70 px-4 py-3">
-            <p>
+          <section className="flex items-center justify-between gap-3 rounded-2xl border border-ink-600 bg-ink-800/70 px-4 py-2">
+            <p className="min-w-0 truncate">
               Jugando como{" "}
               <strong className="font-display text-lg font-bold text-volt">{player.username}</strong>
             </p>
@@ -128,28 +128,26 @@ export default function HomePage() {
           </section>
 
           {actionError ? (
-            <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
+            <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-2 text-sm text-bubble">
               {actionError}
             </p>
           ) : null}
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <section className="card flex flex-col gap-4">
+          <div className="grid gap-3 md:grid-cols-2 md:gap-5">
+            <section className="card flex flex-col gap-3 !p-4">
               <div>
-                <h2 className="font-display text-2xl font-bold">Crear sala</h2>
-                <p className="mt-1 text-mist">
-                  Serás el anfitrión y el primer jugador mano. Comparte el código con tus amigos.
-                </p>
+                <h2 className="font-display text-xl font-bold sm:text-2xl">Crear sala</h2>
+                <p className="mt-0.5 text-sm text-mist">Serás el anfitrión y el primer jugador mano.</p>
               </div>
               <fieldset>
-                <legend className="mb-2 text-sm font-bold">Número de rondas</legend>
-                <div className="flex flex-wrap gap-2">
+                <legend className="mb-1.5 text-sm font-bold">Número de rondas</legend>
+                <div className="grid grid-cols-8 gap-1.5">
                   {ROUND_OPTIONS.map((n) => (
                     <button
                       key={n}
                       type="button"
                       aria-pressed={rounds === n}
-                      className={`${rounds === n ? "btn-primary" : "btn-ghost"} !px-3 !py-1.5 text-sm`}
+                      className={`${rounds === n ? "btn-primary" : "btn-ghost"} !px-0 !py-1.5 text-sm`}
                       onClick={() => setRounds(n)}
                     >
                       {n}
@@ -167,10 +165,10 @@ export default function HomePage() {
               </button>
             </section>
 
-            <form className="card flex flex-col gap-4" onSubmit={handleJoin}>
+            <form className="card flex flex-col gap-3 !p-4" onSubmit={handleJoin}>
               <div>
-                <h2 className="font-display text-2xl font-bold">Unirme a una sala</h2>
-                <p className="mt-1 text-mist">Escribe el código de {ROOM_CODE_LENGTH} números.</p>
+                <h2 className="font-display text-xl font-bold sm:text-2xl">Unirme a una sala</h2>
+                <p className="mt-0.5 text-sm text-mist">Escribe el código de {ROOM_CODE_LENGTH} números.</p>
               </div>
               <div>
                 <label htmlFor="room-code" className="sr-only">
@@ -186,7 +184,7 @@ export default function HomePage() {
                   onChange={(e) => setCode(sanitizeCode(e.target.value))}
                   placeholder="000000"
                   maxLength={ROOM_CODE_LENGTH}
-                  className="field text-center font-display text-3xl font-bold tracking-[0.35em]"
+                  className="field text-center font-display text-2xl font-bold tracking-[0.35em] !py-2"
                 />
               </div>
               <button
@@ -199,13 +197,13 @@ export default function HomePage() {
             </form>
           </div>
 
-          <section aria-labelledby="como-se-juega" className="pt-2">
-            <h2 id="como-se-juega" className="mb-4 font-display text-xl font-bold">
+          <section aria-labelledby="como-se-juega" className="hidden pt-1 [@media(min-height:860px)]:block">
+            <h2 id="como-se-juega" className="mb-3 font-display text-xl font-bold">
               Cómo se juega
             </h2>
-            <ol className="grid gap-4 sm:grid-cols-3">
+            <ol className="grid gap-3 sm:grid-cols-3">
               {STEPS.map((step, index) => (
-                <li key={step.title} className="flex gap-3 rounded-2xl border border-ink-600 p-4">
+                <li key={step.title} className="flex gap-3 rounded-2xl border border-ink-600 p-3">
                   <span
                     aria-hidden="true"
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper font-display font-bold text-ink-900"

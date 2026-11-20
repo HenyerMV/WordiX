@@ -137,17 +137,20 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
         <div className="flex items-center gap-2">
           {showLetterChip ? (
             <span
-              className="rounded-xl bg-volt px-3 py-1.5 font-display text-xl font-bold leading-tight text-ink-900"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-volt font-display text-xl font-bold text-ink-900"
               aria-label={`Letra de la ronda: ${letter}`}
             >
               {letter}
             </span>
           ) : null}
-          <span className="rounded-xl bg-paper px-3 py-1.5 text-right text-ink-900" aria-label={`Tu puntaje: ${pointsOf(myId)} puntos`}>
-            <span className="block text-[10px] font-bold uppercase leading-none tracking-wide">Tus puntos</span>
-            <span className="font-display text-xl font-bold leading-tight">{pointsOf(myId)}</span>
+          <span
+            className="inline-flex h-10 items-center gap-2 rounded-2xl bg-paper px-3 text-ink-900"
+            aria-label={`Tu puntaje: ${pointsOf(myId)} puntos`}
+          >
+            <span className="text-[10px] font-bold uppercase leading-none tracking-wide">Puntos</span>
+            <span className="font-display text-xl font-bold leading-none">{pointsOf(myId)}</span>
           </span>
-          <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={onExit}>
+          <button type="button" className="btn-ghost !h-10 !px-4 !py-0 text-sm" onClick={onExit}>
             Inicio
           </button>
         </div>

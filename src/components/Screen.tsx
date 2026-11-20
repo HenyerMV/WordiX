@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export function Screen({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <main
-      className={`mx-auto flex min-h-dvh w-full flex-col gap-6 px-4 py-8 sm:gap-8 sm:py-12 ${
+      className={`mx-auto flex h-dvh w-full flex-col gap-3 overflow-y-auto px-4 py-4 sm:gap-6 sm:py-10 [&>*]:shrink-0 ${
         wide ? "max-w-4xl" : "max-w-xl"
       }`}
     >
