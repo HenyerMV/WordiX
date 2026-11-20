@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnswerForm } from "@/components/AnswerForm";
 import { FinalResults } from "@/components/FinalResults";
 import { ReviewView } from "@/components/ReviewView";
@@ -113,84 +113,89 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
 
   if (game?.status === "finished") {
     return (
-      <>
-        <header className="flex items-center justify-between gap-3">
-          <p className="text-sm uppercase tracking-widest text-mist">Sala {room.code}</p>
+      <GameShell>
+        <header className="flex shrink-0 items-center justify-between gap-2">
+          <p className="text-xs uppercase tracking-widest text-mist">Sala {room.code}</p>
         </header>
         <FinalResults players={players} results={results} myId={myId} totalRounds={totalRounds} onExit={onExit} />
-      </>
+      </GameShell>
     );
   }
 
+  const showLetterChip = Boolean(letter) && (status === "answering" || status === "reviewing" || status === "finished");
+  const showWheel = status === "spinning" || status === "letter_vote";
+
   return (
-    <>
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm uppercase tracking-widest text-mist">Sala {room.code}</p>
-          <h1 className="font-display text-2xl font-bold">
+    <GameShell>
+      <header className="flex shrink-0 items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs uppercase tracking-widest text-mist">Sala {room.code}</p>
+          <h1 className="font-display text-xl font-bold leading-tight">
             Ronda {shownRound} de {totalRounds}
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {showLetterChip ? (
+            <span
+              className="rounded-xl bg-volt px-3 py-1.5 font-display text-xl font-bold leading-tight text-ink-900"
+              aria-label={`Letra de la ronda: ${letter}`}
+            >
+              {letter}
+            </span>
+          ) : null}
           <span className="rounded-xl bg-paper px-3 py-1.5 text-right text-ink-900" aria-label={`Tu puntaje: ${pointsOf(myId)} puntos`}>
             <span className="block text-[10px] font-bold uppercase leading-none tracking-wide">Tus puntos</span>
             <span className="font-display text-xl font-bold leading-tight">{pointsOf(myId)}</span>
           </span>
-          <button type="button" className="btn-ghost" onClick={onExit}>
+          <button type="button" className="btn-ghost !px-3 !py-1.5 text-sm" onClick={onExit}>
             Inicio
           </button>
         </div>
       </header>
 
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Jugadores">
+      <ul className="grid shrink-0 gap-1.5" style={{ gridTemplateColumns: `repeat(${members.length}, minmax(0, 1fr))` }} aria-label="Jugadores">
         {members.map((m) => {
           const style = seatStyle(m.seat);
           const isHand = m.playerId === round.hand_player_id;
           const voted = status === "letter_vote" && votes.some((v) => v.player_id === m.playerId);
+          const note = isHand
+            ? "mano"
+            : voted
+              ? "ya votó"
+              : status === "answering" && progress.some((p) => p.player_id === m.playerId && p.finished)
+                ? "terminó"
+                : "\u00A0";
           return (
             <li
               key={m.playerId}
-              className={`flex items-center gap-2 rounded-2xl bg-ink-700 p-2 ring-2 ${
+              className={`flex min-w-0 flex-col items-center rounded-xl bg-ink-700 px-1.5 pb-1 pt-1.5 ring-2 ${
                 isHand ? "ring-sun" : "ring-transparent"
               }`}
             >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-lg font-bold uppercase ${style.tile}`}
-              >
-                {m.username.charAt(0)}
+              <span aria-hidden="true" className={`mb-1 h-1 w-full rounded-full ${style.tile}`} />
+              <span className="max-w-full truncate text-xs font-bold">
+                {m.username}
+                {m.playerId === myId ? " (tú)" : ""}
               </span>
-              <span className="min-w-0 text-sm">
-                <span className="block truncate font-bold">
-                  {m.username}
-                  {m.playerId === myId ? " (tú)" : ""}
-                </span>
-                <span className="block text-xs text-mist">
-                  {isHand
-                    ? "mano"
-                    : voted
-                      ? "ya votó"
-                      : status === "answering" && progress.some((p) => p.player_id === m.playerId && p.finished)
-                        ? "terminó"
-                        : "\u00A0"}
-                </span>
-              </span>
-              <span className="ml-auto pl-1 font-display font-bold text-volt" aria-label={`${pointsOf(m.playerId)} puntos`}>
+              <span className="font-display text-lg font-bold leading-none text-volt" aria-label={`${pointsOf(m.playerId)} puntos`}>
                 {pointsOf(m.playerId)}
               </span>
+              <span className="h-3 text-[10px] leading-3 text-mist">{note}</span>
             </li>
           );
         })}
       </ul>
 
       {status === "spinning" && previousRound?.status === "letter_rejected" && previousRound.letter ? (
-        <p role="status" className="rounded-xl bg-bubble/15 px-4 py-3 text-center text-bubble">
+        <p role="status" className="shrink-0 rounded-xl bg-bubble/15 px-3 py-2 text-center text-sm text-bubble">
           Se rechazó la letra {previousRound.letter.toUpperCase()}. Nuevo mano: {handName}.
         </p>
       ) : null}
 
-      <section className="card flex flex-col items-center gap-5 text-center">
-        <Wheel letter={status === "spinning" ? null : round.letter} startedAtMs={spinStartedAt} offsetMs={offset} />
+      <section className="card flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto !p-3 text-center sm:!p-5">
+        {showWheel ? (
+          <Wheel letter={status === "spinning" ? null : round.letter} startedAtMs={spinStartedAt} offsetMs={offset} />
+        ) : null}
 
         {status === "spinning" ? (
           <SpinControls
@@ -208,12 +213,14 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
               Girando…
             </p>
           ) : (
-            <div className="flex w-full flex-col items-center gap-4">
-              <p className="text-mist">Salió la letra</p>
-              <span className="inline-flex h-24 w-20 items-center justify-center rounded-2xl bg-paper font-display text-6xl font-bold text-ink-900 shadow-[0_5px_0_0_rgba(0,0,0,0.35)] animate-pop-in">
-                {letter}
-              </span>
-              <p className="text-lg">¿Jugamos con esta letra?</p>
+            <div className="flex w-full flex-col items-center gap-3">
+              <div className="flex items-center gap-3">
+                <p className="text-mist">Salió la letra</p>
+                <span className="inline-flex h-16 w-14 items-center justify-center rounded-2xl bg-paper font-display text-5xl font-bold text-ink-900 shadow-[0_5px_0_0_rgba(0,0,0,0.35)] animate-pop-in">
+                  {letter}
+                </span>
+              </div>
+              <p>¿Jugamos con esta letra?</p>
               <div className="flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
@@ -234,7 +241,7 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
                   No, otra letra
                 </button>
               </div>
-              <p className="text-sm text-mist" aria-live="polite">
+              <p className="text-xs text-mist" aria-live="polite">
                 Votaron {roundVotes.length} de {members.length} · quedan {seconds(VOTE_TOTAL_MS - elapsed)} s ·
                 si hay empate decide {iAmHand ? "tu voto" : `el voto de ${handName}`}
               </p>
@@ -258,8 +265,8 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
         ) : null}
 
         {status === "reviewing" ? (
-          <div className="flex w-full flex-col items-center gap-4">
-            <p className="font-display text-xl font-bold">
+          <div className="flex min-h-0 w-full flex-1 flex-col gap-2">
+            <p className="shrink-0 font-display text-lg font-bold">
               {round.stopped_by ? `${nameOf(round.stopped_by)} dio STOP` : "La ronda terminó por acuerdo"}
             </p>
             <ReviewView
@@ -267,7 +274,7 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
               answers={roundAnswers}
               reviews={reviews}
               votes={wordVotes}
-              players={members.map((m) => ({ id: m.playerId, name: m.username }))}
+              players={players}
               myId={myId}
               onChanged={() => void refresh()}
             />
@@ -275,7 +282,7 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
         ) : null}
 
         {status === "finished" ? (
-          <div className="flex w-full flex-col items-center gap-6">
+          <div className="flex w-full flex-col items-center gap-3">
             <RoundResults
               players={players}
               answers={roundAnswers}
@@ -294,17 +301,27 @@ export function GameView({ room, members, myId, onExit }: GameViewProps) {
               players={players}
               myId={myId}
               onChanged={() => void refresh()}
+              collapsible
             />
           </div>
         ) : null}
       </section>
 
       {actionError ? (
-        <p role="alert" className="rounded-xl bg-bubble/15 px-4 py-3 text-bubble">
+        <p role="alert" className="shrink-0 rounded-xl bg-bubble/15 px-3 py-2 text-sm text-bubble">
           {actionError}
         </p>
       ) : null}
-    </>
+    </GameShell>
+  );
+}
+
+/** Contenedor de pantalla fija: ocupa justo el alto del dispositivo y no desplaza la página. */
+function GameShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-x-0 top-0 mx-auto flex h-dvh w-full max-w-3xl flex-col gap-2 overflow-hidden p-3 sm:gap-3 sm:p-5">
+      {children}
+    </div>
   );
 }
 

@@ -26,6 +26,8 @@ export const viewport: Viewport = {
   themeColor: "#100b26",
   width: "device-width",
   initialScale: 1,
+  // En el celular, el teclado reduce el alto disponible en lugar de tapar la pantalla.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

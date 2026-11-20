@@ -109,7 +109,7 @@ export function AnswerForm({
   const iVotedEnd = endVotes.some((v) => v.player_id === myId);
 
   const endBox = (
-    <div className="flex flex-col items-center gap-1 border-t border-white/10 pt-4 text-center">
+    <div className="mt-auto flex flex-col items-center gap-1 border-t border-white/10 pt-3 text-center">
       <button type="button" className="btn-ghost text-sm" disabled={busy} onClick={() => run(() => voteEndRound(round.id, !iVotedEnd))}>
         {iVotedEnd ? "Quitar mi voto para terminar" : "Terminar la ronda"}
       </button>
@@ -141,7 +141,7 @@ export function AnswerForm({
   }
 
   return (
-    <div className="flex w-full flex-col gap-4 text-left">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-3 text-left">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-mist">
           Letra <span className="font-display text-lg font-bold text-volt">{letter.toUpperCase()}</span> · categoría{" "}

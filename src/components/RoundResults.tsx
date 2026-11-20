@@ -25,26 +25,27 @@ export function RoundResults({ players, answers, results, myId, roundNumber, tot
   const roundPoints = (id: string) => answers.filter((a) => a.player_id === id).reduce((sum, a) => sum + a.points, 0);
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
-      <p className="font-display text-xl font-bold">Resultados de la ronda {roundNumber}</p>
-      <ol className="flex w-full max-w-md flex-col gap-2 text-left" aria-label="Puntajes">
+    <div className="flex w-full shrink-0 flex-col items-center gap-3">
+      <p className="font-display text-lg font-bold">
+        Resultados de la ronda {roundNumber} <span className="text-sm font-normal text-mist">({roundNumber} de {totalRounds})</span>
+      </p>
+      <ol className="flex w-full max-w-md flex-col gap-1.5 text-left" aria-label="Puntajes">
         {standings.map((row) => (
-          <li key={row.player_id} className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-4 py-2">
-            <span className="flex items-center gap-3">
+          <li key={row.player_id} className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-1.5">
+            <span className="flex min-w-0 items-center gap-2">
               <span className="font-display font-bold text-mist">{row.position}.º</span>
-              <span className="font-bold">
+              <span className="truncate font-bold">
                 {nameOf(row.player_id)}
                 {row.player_id === myId ? " (tú)" : ""}
               </span>
             </span>
-            <span className="flex items-baseline gap-3">
+            <span className="flex shrink-0 items-baseline gap-2">
               <span className="text-sm text-volt">+{roundPoints(row.player_id)}</span>
-              <span className="font-display text-xl font-bold">{row.total_points}</span>
+              <span className="font-display text-lg font-bold">{row.total_points}</span>
             </span>
           </li>
         ))}
       </ol>
-      <p className="text-sm text-mist">Llevan {roundNumber} de {totalRounds} rondas.</p>
       <button type="button" className="btn-primary" disabled={busy} onClick={onNext}>
         Siguiente ronda
       </button>

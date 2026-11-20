@@ -80,7 +80,7 @@ export function Wheel({ letter, startedAtMs, offsetMs }: WheelProps) {
   return (
     <svg
       viewBox={`0 0 ${SIZE} ${SIZE + 10}`}
-      className="mx-auto w-full max-w-xs drop-shadow-[0_10px_0_rgba(0,0,0,0.3)]"
+      className="mx-auto max-h-[34dvh] w-full max-w-xs shrink-0 drop-shadow-[0_10px_0_rgba(0,0,0,0.3)]"
       role="img"
       aria-label={letter ? `Ruleta detenida en la letra ${letter.toUpperCase()}` : "Ruleta del abecedario"}
     >
