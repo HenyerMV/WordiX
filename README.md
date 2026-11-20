@@ -34,7 +34,8 @@ Las tablas de rondas, respuestas, votos y resultados ya existen con sus reglas, 
    5. `supabase/migrations/20261116000005_validacion.sql`
    6. `supabase/migrations/20261116000006_votacion_palabras.sql`
    7. `supabase/migrations/20261116000007_puntos_y_rondas.sql`
-   8. `supabase/seed.sql`
+   8. `supabase/migrations/20261116000008_votacion_mayoria.sql`
+   9. `supabase/seed.sql`
 4. En **Project Settings > API** copia la URL y la clave pública (anon/publishable).
 
 ### 2. Local
@@ -74,7 +75,7 @@ El plan gratuito de Supabase pausa el proyecto tras 7 días sin actividad. `verc
 - **Categorías fijas** para todas las rondas, guardadas en `categories` (se pueden desactivar con `is_active`). La partida copia las activas en `game_categories` al empezar.
 - **Identidad:** sesión anónima de Supabase + nombre de jugador. La sesión persiste en el navegador, lo que permite reconectarse.
 - **Reloj oficial en el servidor:** `rounds.phase_started_at`; los plazos de 20 s se calcularán a partir de ahí.
-- **Votación de palabras (etapa 8):** una palabra `in_review` la votan todos los jugadores menos su autor. Un voto en contra la rechaza al instante; hace falta que TODOS voten a favor para aceptarla. El voto no se puede cambiar. Si se acepta por unanimidad se guarda en `word_dictionary` con origen `vote`. La decide la función SQL `vote_word`; `src/lib/game/reviews.ts` replica la regla para la pantalla y para las pruebas.
+- **Votación de palabras (etapa 8, ajustada):** una palabra `in_review` la votan todos los jugadores menos su autor y se decide por **mayoría**: se acepta si más de la mitad vota a favor y se rechaza cuando ya no puede llegar a esa mayoría (un empate rechaza). Se decide en cuanto el resultado no puede cambiar. El voto no se puede cambiar. Si se acepta se guarda en `word_dictionary` con origen `vote`. La decide la función SQL `vote_word` (migración 8, que reemplaza a la 6); `src/lib/game/reviews.ts` replica la regla para la pantalla y las pruebas.
 - **Puntos y rondas (etapa 9):** el anfitrión elige 3 a 10 rondas al crear la sala. Al terminar la revisión, `finish_round` da 50 puntos a cada jugador que comparte una palabra válida (misma categoría, sin importar tildes ni mayúsculas) y 100 a quien tiene una palabra válida que nadie más tiene; lo rechazado vale 0. `game_results` guarda el total de cada jugador. Al cerrar la última ronda la partida termina y se calculan las posiciones (los empates comparten lugar). Si se rechaza la letra, esa ronda no cuenta. `src/lib/game/scoring.ts` replica la regla para las pruebas.
 - **Tildes:** se conserva la escritura original y se busca con `word_normalized` (sin tildes, con ñ).
 - **Jugador mano:** el orden lo da `room_players.seat`; un trigger impide que alguien sea mano dos rondas seguidas.

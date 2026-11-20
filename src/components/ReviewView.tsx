@@ -77,8 +77,8 @@ export function ReviewView({ categories, answers, reviews, votes, players, myId,
           <span>Validando respuestas… {pending} por comprobar.</span>
         ) : toVote > 0 ? (
           <span>
-            {accepted} aceptadas, {rejected} rechazadas. Faltan {toVote} palabras por votar: se aceptan solo si todos los
-            demás jugadores votan a favor.
+            {accepted} aceptadas, {rejected} rechazadas. Faltan {toVote} palabras por votar: se aceptan si más de la
+            mitad de los demás jugadores vota a favor.
           </span>
         ) : (
           <span>

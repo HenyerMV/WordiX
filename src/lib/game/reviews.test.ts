@@ -9,20 +9,32 @@ test("sin votos, la revisión sigue abierta", () => {
   assert.equal(decideReview([], ["b", "c"]), "open");
 });
 
-test("todos a favor la aceptan", () => {
+test("con tres votantes, 2 a favor y 1 en contra la aceptan (caso bogotá)", () => {
+  assert.equal(decideReview([yes("b"), yes("c"), no("d")], ["b", "c", "d"]), "accepted");
+});
+
+test("con tres votantes, se acepta en cuanto hay 2 a favor, sin esperar al tercero", () => {
+  assert.equal(decideReview([yes("b"), yes("c")], ["b", "c", "d"]), "accepted");
+});
+
+test("con tres votantes, un solo voto en contra ya no la rechaza", () => {
+  assert.equal(decideReview([no("b")], ["b", "c", "d"]), "open");
+  assert.equal(decideReview([yes("b"), no("c")], ["b", "c", "d"]), "open");
+});
+
+test("con tres votantes, 2 en contra la rechazan", () => {
+  assert.equal(decideReview([no("b"), no("c")], ["b", "c", "d"]), "rejected");
+  assert.equal(decideReview([yes("b"), no("c"), no("d")], ["b", "c", "d"]), "rejected");
+});
+
+test("con dos votantes, un empate rechaza y hace falta que ambos digan sí", () => {
+  assert.equal(decideReview([yes("b"), no("c")], ["b", "c"]), "rejected");
+  assert.equal(decideReview([no("b")], ["b", "c"]), "rejected");
+  assert.equal(decideReview([yes("b")], ["b", "c"]), "open");
   assert.equal(decideReview([yes("b"), yes("c")], ["b", "c"]), "accepted");
 });
 
-test("faltan votos a favor: sigue abierta", () => {
-  assert.equal(decideReview([yes("b")], ["b", "c"]), "open");
-});
-
-test("un solo voto en contra la rechaza, aunque falten votos", () => {
-  assert.equal(decideReview([no("b")], ["b", "c", "d"]), "rejected");
-  assert.equal(decideReview([yes("b"), yes("c"), no("d")], ["b", "c", "d"]), "rejected");
-});
-
-test("con dos jugadores decide el único voto del otro jugador", () => {
+test("con un solo votante decide su voto", () => {
   assert.equal(decideReview([yes("b")], ["b"]), "accepted");
   assert.equal(decideReview([no("b")], ["b"]), "rejected");
 });
